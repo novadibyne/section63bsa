@@ -28,6 +28,8 @@ describe('Schedule text', () => {
     expect(text).toContain('Mobile ☑');
     expect(text).toContain('DVR ☐');
     expect(text).toContain('SHA256: ☑');
+    expect(text).toContain('SHA1: ☐');
+    expect(text).toContain('MD5: ☐');
     expect(text).toContain('Date (DD/MM/YYYY): 13/10/2026');
   });
 });

@@ -38,7 +38,6 @@ export function normaliseHash(value: string): string {
   return value.trim().toLowerCase().replace(/[^0-9a-f]/g, '');
 }
 
-export function guessAlgoFromLength(hex: string): 'md5' | 'sha1' | 'sha256' | undefined {
-  const n = normaliseHash(hex).length;
-  return n === 32 ? 'md5' : n === 40 ? 'sha1' : n === 64 ? 'sha256' : undefined;
+export function isSha256Hex(hex: string): boolean {
+  return /^[0-9a-f]{64}$/.test(normaliseHash(hex));
 }

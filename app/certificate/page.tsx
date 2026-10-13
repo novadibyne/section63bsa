@@ -64,7 +64,6 @@ function Wizard() {
     await updateCertificate(c.id, {
       partA: c.partA,
       partB: c.partB,
-      hashAlgo: c.hashAlgo,
       declarationAcknowledgedAt: c.declarationAcknowledgedAt,
     });
   });

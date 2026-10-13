@@ -9,7 +9,7 @@ export const sampleContext = (fileCount = 1): CertificateContext => ({
   evidence: { id: 'ev-1', title: 'WhatsApp chat', evidenceType: 'whatsapp_export', mannerOfProduction: 'Exported via WhatsApp', status: 'hashed', createdAt: '2026-10-13T10:00:00Z', updatedAt: '2026-10-13T10:00:00Z' },
   files: Array.from({ length: fileCount }, (_, i) => ({
     id: `f${i}`, evidenceId: 'ev-1', originalFilename: `chat-${i}.zip`, kind: 'whatsapp_export' as const, sizeBytes: 1234, detectedMime: 'application/zip',
-    sha256: '78a59b5110151199e10b188bad351928ca0dcb1c0fb1e5fea4322ba7db0adf69', sha1: 'cd6d534785c910ead9e3471590c4018db9afb728', md5: 'c0f0d2fd29e9018c4b4dcd288d86fe4a',
+    sha256: '78a59b5110151199e10b188bad351928ca0dcb1c0fb1e5fea4322ba7db0adf69',
     hashedAt: '2026-10-13T10:00:00Z', metadata: { summary: [] }, blobStored: true, addedAt: '2026-10-13T10:00:00Z',
     members: [{ name: '_chat.txt', sizeBytes: 524, sha256: '78a59b5110151199e10b188bad351928ca0dcb1c0fb1e5fea4322ba7db0adf69' }],
   })),

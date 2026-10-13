@@ -43,7 +43,7 @@ export function StepEvidence({ evidence, files }: { evidence: Evidence; files: E
         <CardHeader
           icon={<FileStack />}
           title="Evidence files"
-          description="Each file is hashed with SHA-256, SHA-1 and MD5 the moment you add it."
+          description="Each file gets its SHA-256 hash the moment you add it."
         />
         <CardBody className="flex flex-col gap-4">
           <Dropzone evidenceId={evidence.id} compact={files.length > 0} />

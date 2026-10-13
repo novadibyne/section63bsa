@@ -147,19 +147,6 @@ export function FileCard({ file, editable = true, full = false }: { file: Eviden
 
       <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4 sm:px-5">
         <HashLine algo="SHA-256" value={file.sha256} emphasise />
-        {full ? (
-          <>
-            <HashLine algo="SHA-1" value={file.sha1} />
-            <HashLine algo="MD5" value={file.md5} />
-          </>
-        ) : (
-          <Disclosure title="SHA-1 and MD5">
-            <div className="flex flex-col gap-2">
-              <HashLine algo="SHA-1" value={file.sha1} />
-              <HashLine algo="MD5" value={file.md5} />
-            </div>
-          </Disclosure>
-        )}
 
         {summary.length > 0 && (
           <dl className="mt-1 grid grid-cols-1 gap-x-6 gap-y-1.5 rounded-xl bg-ink-50/60 px-3.5 py-3 sm:grid-cols-2">
@@ -196,16 +183,16 @@ export function FileCard({ file, editable = true, full = false }: { file: Eviden
 
         {full && (
           <div className="mt-1 rounded-xl border border-line p-3.5">
-            <p className="text-[13px] font-medium text-ink-800">Hash recorded at acquisition (optional)</p>
+            <p className="text-[13px] font-medium text-ink-800">SHA-256 recorded at acquisition (optional)</p>
             <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-500">
-              If the expert or party hashed the original when collecting it, paste that value. It is compared with this file and
+              If the expert or party hashed the original when collecting it, paste that SHA-256. It is compared with this file and
               reported in the Hash Report.
             </p>
             <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
               <Input
                 value={acq}
                 onChange={(e) => setAcq(e.target.value)}
-                placeholder="Paste an MD5, SHA-1 or SHA-256 value"
+                placeholder="Paste a SHA-256 value (64 characters)"
                 className="font-mono text-[12.5px]"
                 disabled={!editable}
               />
@@ -215,9 +202,9 @@ export function FileCard({ file, editable = true, full = false }: { file: Eviden
                 onClick={async () => {
                   const r = await setAcquisitionHash(file.id, acq);
                   if (!r) toast('Acquisition hash cleared');
-                  else if (!r.algo) toast.error('Not a recognisable MD5, SHA-1 or SHA-256 value');
-                  else if (r.match) toast.success(`Matches the computed ${r.algo.toUpperCase()}`);
-                  else toast.error(`Does not match the computed ${r.algo.toUpperCase()}`);
+                  else if (!r.valid) toast.error('That is not a SHA-256 value', { description: 'A SHA-256 is 64 characters, 0–9 and a–f.' });
+                  else if (r.match) toast.success('Matches the computed SHA-256');
+                  else toast.error('Does not match the computed SHA-256');
                 }}
               >
                 Compare
@@ -225,9 +212,7 @@ export function FileCard({ file, editable = true, full = false }: { file: Eviden
             </div>
             {file.acquisitionHash && (
               <p className={cn('mt-2 text-[12.5px] font-medium', file.acquisitionHashMatch ? 'text-brand-700' : 'text-red-600')}>
-                {file.acquisitionHashMatch
-                  ? `✓ Matches the computed ${file.acquisitionHashAlgo?.toUpperCase()}`
-                  : `✕ Does not match the computed ${file.acquisitionHashAlgo?.toUpperCase() ?? 'hash'}`}
+                {file.acquisitionHashMatch ? '✓ Matches the computed SHA-256' : '✕ Does not match the computed SHA-256'}
               </p>
             )}
           </div>

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { BadgeCheck, CalendarClock, Fingerprint, KeyRound, Save, ScrollText, UserRound, UserRoundCog } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Certificate, ControlType, Declarant, EvidenceFile, HashAlgo, PartB } from '@/lib/types';
+import type { Certificate, ControlType, Declarant, EvidenceFile, PartB } from '@/lib/types';
 import { CONTROL_OPTIONS, LAWFUL_CONTROL_DECLARATION } from '@/lib/legal/schedule-63';
 import { getProfileDefaults, saveProfileDefaults } from '@/lib/actions';
 import { istDateInput, istTimeInput, nowIso, toDMY } from '@/lib/time';
@@ -11,7 +11,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { CheckChip, Checkbox, Field, Input, Textarea } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/misc';
-import { cn, shortHash } from '@/lib/utils';
+import { shortHash } from '@/lib/utils';
 
 type SetCert = (fn: (c: Certificate) => Certificate) => void;
 
@@ -92,7 +92,6 @@ export function StepPartA({ cert, setCert, files, readOnly }: { cert: Certificat
   const a = cert.partA;
   const patch = (p: Partial<typeof a>) => setCert((c) => ({ ...c, partA: { ...c.partA, ...p } }));
   const toggle = (k: ControlType, on: boolean) => patch({ control: on ? [...a.control, k] : a.control.filter((x) => x !== k) });
-  const first = files[0];
 
   return (
     <fieldset disabled={readOnly} className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -156,29 +155,19 @@ export function StepPartA({ cert, setCert, files, readOnly }: { cert: Certificat
 
       <div className="flex flex-col gap-6">
         <Card>
-          <CardHeader icon={<Fingerprint />} title="Hash algorithm" description="Ticked in both parts; values are taken from your files." />
-          <CardBody className="flex flex-col gap-2">
-            {(['sha256', 'sha1', 'md5'] as HashAlgo[]).map((k) => {
-              const on = cert.hashAlgo === k;
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setCert((c) => ({ ...c, hashAlgo: k }))}
-                  className={cn(
-                    'flex flex-col items-start rounded-xl border px-3.5 py-2.5 text-left transition-all',
-                    on ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-100' : 'border-line bg-white hover:border-ink-300',
-                  )}
-                  aria-pressed={on}
-                >
-                  <span className="flex w-full items-center justify-between text-[13.5px] font-semibold text-ink-900">
-                    {k === 'sha256' ? 'SHA256' : k.toUpperCase()}
-                    {k === 'sha256' && <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[10.5px] font-semibold text-white">Recommended</span>}
-                  </span>
-                  {first && <span className="hash mt-0.5 text-[11.5px] text-ink-500">{shortHash(first[k as 'sha256' | 'sha1' | 'md5'], 14)}</span>}
-                </button>
-              );
-            })}
+          <CardHeader icon={<Fingerprint />} title="Hash algorithm: SHA-256" description="SHA256 is ticked in both parts of the certificate." />
+          <CardBody className="flex flex-col gap-3">
+            {files.slice(0, 3).map((f) => (
+              <div key={f.id} className="rounded-xl border border-brand-200 bg-brand-50/60 px-3.5 py-2.5">
+                <p className="truncate text-[12.5px] font-medium text-ink-800">{f.originalFilename}</p>
+                <p className="hash mt-0.5 text-[11.5px] text-ink-600">{shortHash(f.sha256, 16)}</p>
+              </div>
+            ))}
+            {files.length > 3 && <p className="text-[12.5px] text-ink-500">+ {files.length - 3} more in the Hash Report</p>}
+            <p className="text-[12.5px] leading-relaxed text-ink-500">
+              SHA-256 is the current standard (NIST FIPS 180-4). The Schedule&apos;s SHA1 and MD5 boxes are printed as part of the statutory
+              form but left unticked.
+            </p>
           </CardBody>
         </Card>
         <Callout tone="neutral" icon={<BadgeCheck />}>

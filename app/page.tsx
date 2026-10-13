@@ -58,7 +58,7 @@ function EvidenceRow({ ev, fileCount }: { ev: Evidence; fileCount: number }) {
 }
 
 const HOW = [
-  { icon: FileStack, title: 'Add the evidence', text: 'Photos, recordings, a WhatsApp export or documents. Each file gets SHA-256, SHA-1 and MD5 instantly.' },
+  { icon: FileStack, title: 'Add the evidence', text: 'Photos, recordings, a WhatsApp export or documents. Each file gets its SHA-256 hash instantly.' },
   { icon: Cpu, title: 'Describe the device', text: 'Phone, computer, DVR or cloud: make, model, serial, IMEI. Photo EXIF pre-fills what it can.' },
   { icon: UserRoundCheck, title: 'Part A and Part B', text: 'The party’s declaration and the expert’s details, with the statutory text exactly as in the Schedule.' },
   { icon: Stamp, title: 'Review and download', text: 'See every field in place, then download the PDF with the Hash Report annexed, ready to sign.' },
@@ -108,7 +108,7 @@ export default function Dashboard() {
             <ul className="mt-9 grid gap-3 text-[13.5px] text-ink-700 sm:grid-cols-3">
               {[
                 [Lock, 'Files never leave your device'],
-                [Fingerprint, 'SHA-256, SHA-1 and MD5'],
+                [Fingerprint, 'SHA-256 hash of every file'],
                 [ShieldCheck, 'Hash-chained audit log'],
               ].map(([Icon, text]) => {
                 const I = Icon as typeof Lock;

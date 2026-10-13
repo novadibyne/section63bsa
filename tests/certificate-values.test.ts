@@ -4,7 +4,7 @@ import type { Certificate, Device, Evidence, EvidenceFile } from '@/lib/types';
 
 const file = (n: number): EvidenceFile => ({
   id: `f${n}`, evidenceId: 'e', originalFilename: `photo${n}.jpg`, kind: 'image', sizeBytes: 10,
-  sha256: `${n}`.repeat(64).slice(0, 64), sha1: 'b'.repeat(40), md5: 'c'.repeat(32), hashedAt: '', metadata: { summary: [] }, blobStored: false, addedAt: '',
+  sha256: `${n}`.repeat(64).slice(0, 64), hashedAt: '', metadata: { summary: [] }, blobStored: false, addedAt: '',
 });
 const evidence: Evidence = { id: 'e', title: 'T', evidenceType: 'image', mannerOfProduction: 'Screenshots', status: 'hashed', createdAt: '', updatedAt: '' };
 const device: Device = { id: 'd', evidenceId: 'e', categories: ['mobile', 'cloud'], makeModel: 'Samsung SM-S911B', color: 'Black', serialNumber: 'R5CW', identifiers: [{ idType: 'imei', value: '490154203237518' }], createdAt: '' };
@@ -25,6 +25,7 @@ describe('certificate values', () => {
     expect([...v.boxes.device]).toEqual(['mobile', 'cloud']);
     expect([...v.boxes.control]).toEqual(['owned', 'operated']);
     expect([...v.boxes.algo]).toEqual(['sha256']);
+    expect(v.fields.algoOther).toBeUndefined();
   });
   it('does not tick control boxes in Part B', () => {
     const v = buildPartValues('B', { evidence, files: [file(1)], devices: [device], cert });
@@ -33,7 +34,7 @@ describe('certificate values', () => {
     expect(v.signatureLines).toEqual(['Dr. N. Mehta', 'Examiner']);
   });
   it('lists several files and refers to the annexure beyond four', () => {
-    const t = hashValuesText([1, 2, 3, 4, 5, 6].map(file), 'sha256');
+    const t = hashValuesText([1, 2, 3, 4, 5, 6].map(file));
     expect(t).toContain('(photo1.jpg)');
     expect(t).toContain('and 2 more, as per the Hash Report annexed');
   });

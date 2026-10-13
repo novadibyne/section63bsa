@@ -68,12 +68,6 @@ export const CONTROL_OPTIONS: { key: ControlType; label: string }[] = [
   { key: 'operated', label: 'Operated' },
 ];
 
-export const ALGO_OPTIONS = [
-  { key: 'sha1', label: 'SHA1' },
-  { key: 'sha256', label: 'SHA256' },
-  { key: 'md5', label: 'MD5' },
-] as const;
-
 const f = (field: FieldKey, extra?: { blank?: string; lead?: string }): Seg => ({ field, ...extra });
 const box = (group: BoxGroup, key: string, label: string): Seg => ({ box: group, key, label });
 const GAP = '   ';

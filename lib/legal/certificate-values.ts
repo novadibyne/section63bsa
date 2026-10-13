@@ -30,9 +30,9 @@ function deviceSentence(d: Device, n: number): string {
   return `Device ${n}: ${parts}${d.otherInfo ? `; ${d.otherInfo}` : ''}`;
 }
 
-export function hashValuesText(files: EvidenceFile[], algo: Certificate['hashAlgo']): string {
-  if (algo === 'other' || !files.length) return '';
-  const list = files.map((f) => ({ name: f.originalFilename, hash: f[algo] }));
+export function hashValuesText(files: EvidenceFile[]): string {
+  if (!files.length) return '';
+  const list = files.map((f) => ({ name: f.originalFilename, hash: f.sha256 }));
   if (list.length === 1) return list[0].hash;
   const shown = list.slice(0, MAX_INLINE_HASHES).map((x) => `${x.hash} (${x.name})`);
   const rest = list.length - shown.length;
@@ -67,9 +67,9 @@ export function buildPartValues(part: 'A' | 'B', ctx: CertificateContext): PartV
   v.fields.otherInfo = other;
 
   if (part === 'A') ctx.cert.partA.control.forEach((c) => v.boxes.control.add(c));
-  v.boxes.algo.add(ctx.cert.hashAlgo);
-  v.fields.hashValues = hashValuesText(ctx.files, ctx.cert.hashAlgo);
-  if (ctx.cert.hashAlgo === 'other') v.fields.algoOther = ctx.cert.hashAlgoOther;
+  // SHA-256 is the only algorithm used; the Schedule's SHA1, MD5 and Other boxes stay unticked.
+  v.boxes.algo.add('sha256');
+  v.fields.hashValues = hashValuesText(ctx.files);
   return v;
 }
 

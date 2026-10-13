@@ -13,7 +13,8 @@ export type DeviceCategory =
   | 'other';
 export type ControlType = 'owned' | 'maintained' | 'managed' | 'operated';
 export type IdentifierType = 'imei' | 'uin' | 'uid' | 'mac' | 'cloud_id' | 'other';
-export type HashAlgo = 'sha256' | 'sha1' | 'md5' | 'other';
+/** The only algorithm the app computes. The Schedule's SHA1/MD5/Other boxes are printed but never ticked. */
+export type HashAlgo = 'sha256';
 
 export interface Evidence {
   id: string;
@@ -47,8 +48,10 @@ export interface EvidenceFile {
   sizeBytes: number;
   lastModified?: string;
   sha256: string;
-  sha1: string;
-  md5: string;
+  /** Legacy: only present on records hashed by early builds. */
+  sha1?: string;
+  /** Legacy: only present on records hashed by early builds. */
+  md5?: string;
   hashedAt: string;
   acquisitionHash?: string;
   acquisitionHashAlgo?: HashAlgo;
@@ -108,7 +111,6 @@ export interface Certificate {
   partA: PartA;
   partB: PartB;
   hashAlgo: HashAlgo;
-  hashAlgoOther?: string;
   declarationAcknowledgedAt?: string;
   status: 'draft' | 'finalised';
   pdfSha256?: string;

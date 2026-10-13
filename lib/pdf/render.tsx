@@ -191,7 +191,7 @@ function trimName(n: string) {
 function FileCard({ f, n, tool }: { f: EvidenceFile; n: number; tool: string }) {
   const acq =
     f.acquisitionHash != null
-      ? `${f.acquisitionHash} (${(f.acquisitionHashAlgo ?? '').toUpperCase()}) — ${f.acquisitionHashMatch ? 'MATCHES' : 'DOES NOT MATCH'} the computed value`
+      ? `${f.acquisitionHash} — ${f.acquisitionHashMatch ? 'MATCHES' : 'DOES NOT MATCH'} the computed SHA-256`
       : undefined;
   return (
     <View style={s.fileCard} wrap={false}>
@@ -202,9 +202,7 @@ function FileCard({ f, n, tool }: { f: EvidenceFile; n: number; tool: string }) 
       <KV k="Detected type" v={`${KIND_LABEL[f.kind]}${f.detectedMime ? ` · ${f.detectedMime}` : ''}`} />
       {f.lastModified && <KV k="File last modified" v={formatIst(f.lastModified)} />}
       <KV k="SHA-256" v={f.sha256} mono />
-      <KV k="SHA-1" v={f.sha1} mono />
-      <KV k="MD5" v={f.md5} mono />
-      {acq && <KV k="Hash at acquisition" v={acq} mono />}
+      {acq && <KV k="SHA-256 at acquisition" v={acq} mono />}
       <KV k="Computed at" v={formatIstSeconds(f.hashedAt)} />
       <KV k="Tool" v={tool} />
       <KV k="File ID" v={f.id} mono />
@@ -271,7 +269,7 @@ export function CertificateDocument({ ctx, draft }: { ctx: CertificateContext; d
         <KV k="Manner of production (s.63(4)(a))" v={ev.mannerOfProduction} />
         {ev.courtName ? <KV k="Court / proceeding" v={ev.courtName} /> : null}
         {ev.caseNumber ? <KV k="Case number" v={ev.caseNumber} /> : null}
-        <KV k="Algorithm stated in certificate" v={ctx.cert.hashAlgo.toUpperCase()} />
+        <KV k="Hash algorithm" v="SHA-256 (FIPS 180-4)" />
         <KV k="Number of files" v={String(ctx.files.length)} />
         <KV k="Evidence ID" v={ev.id} mono />
 
@@ -282,8 +280,8 @@ export function CertificateDocument({ ctx, draft }: { ctx: CertificateContext; d
 
         <Text style={s.sectionTitle}>METHOD</Text>
         <Text style={s.small}>
-          Each file was read in 4 MB chunks and SHA-256 (FIPS 180-4), SHA-1 and MD5 were computed in a single pass, in the user&apos;s web
-          browser. The files were not uploaded. Values are lowercase hexadecimal. To verify, recompute the hash of the same file with any
+          Each file was read in 4 MB chunks and its SHA-256 (FIPS 180-4) was computed in the user&apos;s web browser. The files were not
+          uploaded. Values are lowercase hexadecimal. To verify, recompute the hash of the same file with any
           standard tool, for example: sha256sum FILE (Linux), shasum -a 256 FILE (macOS) or certutil -hashfile FILE SHA256 (Windows).
           Identical output confirms the file is bit-for-bit the same as the one described in this report.
         </Text>

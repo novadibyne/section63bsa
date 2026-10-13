@@ -14,7 +14,7 @@ Proof-of-concept web app: users add electronic evidence, the app extracts techni
 |---|---|---|---|
 | 1 | An interface to upload pictures, recordings, WhatsApp messages and other evidence. | Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui, with a drag-and-drop uploader. | A responsive web app that accepts images, audio, video, PDFs/documents, WhatsApp chat exports (`.txt` or `.zip` with media) and any other file as generic evidence. |
 | 2 | Generate certificates under Section 63 BSA. | Generate a PDF that reproduces the **Schedule word for word**: Part A (Party) and Part B (Expert), plus the hash report annexure the Schedule asks for. | A certificate wizard that pre-fills the technical fields (hashes, file details, device metadata) and outputs a **draft** PDF in the exact Schedule format. Signature boxes stay blank so the people concerned can sign. |
-| 3 | *(implied by the certificate)* Hash values. | SHA-256 as the default. Also compute MD5 and SHA-1 because the Schedule lists all three. In the MVP, hash in the browser so files are never uploaded. | Compute and store SHA-256, SHA-1 and MD5 for every file, in the browser. Generate the hash report annexure. Let the user re-verify a file later and compare with an acquisition hash they type in. |
+| 3 | *(implied by the certificate)* Hash values. | SHA-256 only. SHA-1 and MD5 are deprecated (NIST retires SHA-1 by 2030; MD5 has practical collisions). In the MVP, hash in the browser so files are never uploaded. | Compute and store **SHA-256 only** for every file, in the browser. No SHA-1/MD5 options in the app. Generate the hash report annexure. Let the user re-verify a file later and compare with a SHA-256 recorded at acquisition. |
 | 4 | Track user logs. | **MVP:** an append-only, hash-chained audit log stored in the browser (IndexedDB) that can be exported. **Phase 2:** a server-side log in Supabase. | Log evidence creation, file hashing, re-verification, edits, certificate generation and finalising, downloads and bundle export/import, with IST timestamp and user agent. Include a "Verify chain" check. |
 | 5 | Possibly a login page. **Deferred: not in the MVP, to be added later.** | No login in Phase 1. Add Supabase Auth (email + password) with Row Level Security in Phase 2. | **No login in the MVP.** The app works straight away in the browser, and data stays on the user's device. The data model is ready for user accounts and cloud sync in Phase 2 (Appendix A). |
 | 6 | Possibly payment per certificate. | Design for Razorpay later. Not part of the MVP. | Payments are an optional future module. Leave room in the data model, but write no payment code in Phase 1. |
@@ -72,7 +72,7 @@ Verbatim text of **Section 63(4)** (embed it in the app's help panel):
 | Lawful control / working properly / regularly fed paragraph | ✓ | ✗ | fixed statutory text. **The user must tick an acknowledgement before generating** | statute + user |
 | Owned / Maintained / Managed / Operated "by me (select as applicable)" | ✓ | ✗ *(verify against the official PDF)* | multi-select enum | user |
 | HASH value/s of the electronic/digital record/s | ✓ | ✓ | from `evidence_files` | **auto** |
-| Algorithm: SHA1 / SHA256 / MD5 / Other (Legally acceptable standard) | ✓ | ✓ | enum, default SHA256 | **auto** |
+| Algorithm: SHA1 / SHA256 / MD5 / Other (Legally acceptable standard) | ✓ | ✓ | always SHA256 ticked; SHA1, MD5 and Other printed (statutory form) but never ticked | **auto** |
 | "(Hash report to be enclosed with the certificate)" | ✓ | ✓ | generated annexure PDF | **auto** |
 | (Name and signature) | ✓ | — | blank signature box | signed by hand or digital signature outside the app |
 | (Name, designation and signature) | — | ✓ | `designation` text + blank signature box | expert |
@@ -204,7 +204,7 @@ Why browser-only for the MVP:
   - `basePath` read from `NEXT_PUBLIC_BASE_PATH`.
 - **UI:** Tailwind CSS, shadcn/ui, lucide-react, react-hook-form + zod
 - **Local database:** IndexedDB via `dexie` + `dexie-react-hooks`
-- **Hashing:** `hash-wasm` (`createSHA256`, `createSHA1`, `createMD5`). Read the file in 4 MB chunks (`file.slice().arrayBuffer()`) and compute all three hashes in **one pass** inside a **Web Worker** with a progress bar. Don't use `crypto.subtle`, because it can't do MD5 and loads the whole file into memory.
+- **Hashing:** `hash-wasm` (`createSHA256`). Read the file in 4 MB chunks (`file.slice().arrayBuffer()`) and compute **SHA-256** inside a **Web Worker** with a progress bar. Don't use `crypto.subtle`, because it loads the whole file into memory.
 - **File detection:** `file-type` (`fileTypeFromBlob`, which reads magic bytes rather than the file extension)
 - **Metadata:** `exifr` (images), `music-metadata` (`parseBlob` for audio and video containers), `pdf-lib` (PDF info), `jszip` (WhatsApp `.zip` exports and case bundles)
 - **PDF:** `@react-pdf/renderer` in the browser (`pdf(<CertificateDocument/>).toBlob()`), lazy-loaded
@@ -230,14 +230,14 @@ type EvidenceType   = 'image'|'audio'|'video'|'document'|'whatsapp_export'|'emai
 type DeviceCategory = 'computer_storage_media'|'dvr'|'mobile'|'flash_drive'|'cd_dvd'|'server'|'cloud'|'other';
 type ControlType    = 'owned'|'maintained'|'managed'|'operated';
 type IdentifierType = 'imei'|'uin'|'uid'|'mac'|'cloud_id'|'other';
-type HashAlgo       = 'sha256'|'sha1'|'md5'|'other';
+type HashAlgo       = 'sha256';   // the only algorithm used
 
 interface Evidence { id: string; title: string; description?: string; evidenceType: EvidenceType;
   mannerOfProduction?: string /* s.63(4)(a) */; acquiredAt?: string;
   status: 'draft'|'hashed'|'certificate_drafted'|'finalised'|'archived'; createdAt: string; updatedAt: string; }
 
 interface EvidenceFile { id: string; evidenceId: string; originalFilename: string; declaredMime?: string; detectedMime?: string;
-  sizeBytes: number; lastModified?: string; sha256: string; sha1: string; md5: string; hashedAt: string;
+  sizeBytes: number; lastModified?: string; sha256: string; hashedAt: string;
   acquisitionHash?: string; acquisitionHashAlgo?: HashAlgo; acquisitionHashMatch?: boolean;
   metadata: Record<string, unknown>; blobStored: boolean; }
 
@@ -265,7 +265,7 @@ interface AuditEvent { seq?: number; action: string; evidenceId?: string; certif
 
 ### 3.5 File handling and hashing flow
 1. The user drops files, or picks them with the file picker. Nothing is uploaded.
-2. A Web Worker computes **SHA-256, SHA-1 and MD5 in one pass** and shows progress. The results are saved to `files` and logged as `file.hash`.
+2. A Web Worker computes the **SHA-256** and shows progress. The results are saved to `files` and logged as `file.hash`.
 3. Detect the real MIME type with `file-type` and extract metadata (3.6).
 4. The option *"Keep a copy of the file in this browser"* is on by default:
    - The file is stored in `blobs`.
@@ -299,7 +299,7 @@ interface AuditEvent { seq?: number; action: string; evidenceId?: string; certif
 - Output, A4, one PDF, generated in the browser and downloaded:
   - Part A on page 1 onward.
   - Part B on a new page.
-  - **Annexure: Hash Report.** One row per file with: filename, size in bytes, detected MIME, SHA-256, SHA-1, MD5, acquisition hash and match status, time computed (IST), tool (`hash-wasm <version> in <browser>`), evidence ID and file ID.
+  - **Annexure: Hash Report.** One row per file with: filename, size in bytes, detected MIME, SHA-256, SHA-256 at acquisition and match status, time computed (IST), tool (`hash-wasm <version> in <browser>`), evidence ID and file ID.
 - Print hash values in a monospace font with wrapping, and never truncate them.
 - **Tick boxes:** draw each one as a small bordered square, with a tick for selected options. Don't use the ☐/☑ characters, because react-pdf's built-in fonts can't display them. If you use them anyway, bundle a font that includes them, such as Noto Sans Symbols 2, in `public/fonts`.
 - Show a `DRAFT` watermark until the user finalises the version. On finalise, compute and store `pdfSha256` and log it.
@@ -345,7 +345,7 @@ lib/billing/    (empty placeholder, Phase 2)
 - [ ] `npm run build` produces a static `out/` folder. The app works when served from a sub-path (`NEXT_PUBLIC_BASE_PATH=/repo-name`).
 - [ ] The browser DevTools Network tab shows **no request carrying file content** while hashing, generating or exporting.
 - [ ] Image, audio, video, PDF and WhatsApp `.zip` files all work. The real MIME type is detected.
-- [ ] SHA-256, SHA-1 and MD5 match `sha256sum`, `sha1sum` and `md5sum` for the test fixtures (Vitest).
+- [ ] SHA-256 matches `sha256sum` and the FIPS 180-4 test vectors (Vitest).
 - [ ] Device and identifier fields work. IMEI is validated with the Luhn check.
 - [ ] The PDF contains Part A, Part B and the Hash Report, with Schedule wording matching Section 2.3 exactly (unit test compares it with the constants). Tick boxes render correctly.
 - [ ] Dates appear as `DD/MM/YYYY` and times as `HH:MM` IST in 24-hour format.
@@ -565,7 +565,7 @@ create type evidence_status as enum ('draft','hashed','certificate_drafted','fin
 create type device_category as enum ('computer_storage_media','dvr','mobile','flash_drive','cd_dvd','server','cloud','other');
 create type control_type    as enum ('owned','maintained','managed','operated');
 create type identifier_type as enum ('imei','uin','uid','mac','cloud_id','other');
-create type hash_algo       as enum ('sha256','sha1','md5','other');
+create type hash_algo       as enum ('sha256');
 
 create table profiles (
   id uuid primary key references auth.users on delete cascade,
@@ -594,7 +594,7 @@ create table evidence_files (
   declared_mime text, detected_mime text,
   size_bytes bigint not null,
   client_sha256 text,                    -- computed in browser
-  sha256 text, sha1 text, md5 text,      -- computed on server (authoritative)
+  sha256 text,                           -- computed on server (authoritative)
   hash_match boolean,                    -- client_sha256 = sha256
   acquisition_hash text, acquisition_hash_algo hash_algo, -- typed in by party/expert
   hashed_at timestamptz,

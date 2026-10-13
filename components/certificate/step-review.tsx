@@ -30,7 +30,7 @@ function HashReportPreview({ evidence, files, cert }: { evidence: Evidence; file
           ['Title', evidence.title],
           ['Manner of production', evidence.mannerOfProduction || '—'],
           ['Court / case', [evidence.courtName, evidence.caseNumber].filter(Boolean).join(' · ') || '—'],
-          ['Algorithm stated', cert.hashAlgo.toUpperCase()],
+          ['Hash algorithm', 'SHA-256'],
         ].map(([k, v]) => (
           <div key={k} className="flex gap-4 py-2">
             <dt className="w-44 shrink-0 text-ink-500">{k}</dt>
@@ -45,9 +45,7 @@ function HashReportPreview({ evidence, files, cert }: { evidence: Evidence; file
               {i + 1}. {f.originalFilename} <span className="font-normal text-ink-500">· {formatBytes(f.sizeBytes)}</span>
             </p>
             <div className="mt-2 flex flex-col gap-1.5">
-              <HashLine algo="SHA-256" value={f.sha256} emphasise={cert.hashAlgo === 'sha256'} />
-              <HashLine algo="SHA-1" value={f.sha1} emphasise={cert.hashAlgo === 'sha1'} />
-              <HashLine algo="MD5" value={f.md5} emphasise={cert.hashAlgo === 'md5'} />
+              <HashLine algo="SHA-256" value={f.sha256} emphasise />
             </div>
             {f.members?.length ? <p className="mt-2 text-[12px] text-ink-500">+ SHA-256 of {f.members.length} files inside the archive</p> : null}
           </div>

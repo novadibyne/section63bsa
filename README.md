@@ -2,7 +2,7 @@
 
 A web app for preparing **draft certificates for electronic evidence** under **Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 (BSA)**.
 
-Users add evidence files such as photos, audio, video, documents or WhatsApp chat exports. The app computes their hashes (SHA-256, SHA-1, MD5), extracts technical metadata and produces a draft certificate PDF in the format of the Schedule to Section 63(4)(c):
+Users add evidence files such as photos, audio, video, documents or WhatsApp chat exports. The app computes their SHA-256 hash, extracts technical metadata and produces a draft certificate PDF in the format of the Schedule to Section 63(4)(c):
 - **Part A**, filled by the party;
 - **Part B**, filled by the expert;
 - a **Hash Report** annexure.
@@ -18,7 +18,7 @@ Phase 1 runs **entirely in your browser**. Evidence files are hashed and process
 ## Features (Phase 1)
 
 - Add evidence of several types: images, audio, video, PDFs, WhatsApp exports and any other file
-- SHA-256, SHA-1 and MD5 hashing in one pass, with re-verification later
+- SHA-256 hashing (NIST FIPS 180-4), with re-verification later. SHA-1 and MD5 are not used: the Schedule's SHA1 and MD5 boxes are printed as part of the statutory form but left unticked
 - Automatic metadata extraction (EXIF, media details, PDF info, WhatsApp chat summary)
 - Device details as the Schedule asks for: category, make and model, colour, serial number, IMEI/UIN/UID/MAC/Cloud ID
 - A certificate wizard that produces a PDF with Part A, Part B and the Hash Report

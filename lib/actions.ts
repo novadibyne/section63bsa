@@ -1,7 +1,7 @@
 import { db, getSetting, setSetting } from './db';
 import { appendAudit } from './audit/append';
 import { detectFile } from './evidence/detect';
-import { hashFile, guessAlgoFromLength, normaliseHash } from './evidence/hashing';
+import { hashFile, isSha256Hex, normaliseHash } from './evidence/hashing';
 import { sha256Bytes } from './evidence/hash-core';
 import { extractMetadata } from './evidence/metadata';
 import { istDateInput, istTimeInput, nowIso } from './time';
@@ -154,7 +154,7 @@ export async function reverifyFile(fileId: string, source?: File, onProgress?: (
   const blob = source ?? (await getFileBlob(fileId));
   if (!blob) throw new Error('No stored copy. Select the original file to re-verify.');
   const h = await hashFile(blob, onProgress);
-  const match = h.sha256 === f.sha256 && h.sha1 === f.sha1 && h.md5 === f.md5;
+  const match = h.sha256 === f.sha256;
   await db.files.update(fileId, { lastVerifiedAt: nowIso(), lastVerifiedMatch: match });
   await appendAudit('file.reverify', {
     evidenceId: f.evidenceId,
@@ -171,11 +171,11 @@ export async function setAcquisitionHash(fileId: string, value: string) {
     await db.files.update(fileId, { acquisitionHash: undefined, acquisitionHashAlgo: undefined, acquisitionHashMatch: undefined });
     return;
   }
-  const algo = guessAlgoFromLength(norm);
-  const match = algo ? f[algo] === norm : false;
-  await db.files.update(fileId, { acquisitionHash: norm, acquisitionHashAlgo: algo ?? 'other', acquisitionHashMatch: match });
-  await appendAudit('file.acquisition_hash', { evidenceId: f.evidenceId, details: { fileId, algo: algo ?? 'unknown', match } });
-  return { algo, match };
+  if (!isSha256Hex(norm)) return { valid: false, match: false };
+  const match = f.sha256 === norm;
+  await db.files.update(fileId, { acquisitionHash: norm, acquisitionHashAlgo: 'sha256', acquisitionHashMatch: match });
+  await appendAudit('file.acquisition_hash', { evidenceId: f.evidenceId, details: { fileId, match } });
+  return { valid: true, match };
 }
 
 /* ───────────────────────── Devices ───────────────────────── */
@@ -250,7 +250,7 @@ export async function createCertificateVersion(evidenceId: string): Promise<Cert
     scheduleVersion: 'BSA-2023-original',
     partA: freshPartA(prev?.partA ?? defaults.party),
     partB: freshPartB(prev?.partB ?? defaults.expert),
-    hashAlgo: prev?.hashAlgo ?? 'sha256',
+    hashAlgo: 'sha256',
     status: 'draft',
     createdAt: now,
     updatedAt: now,

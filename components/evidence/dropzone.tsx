@@ -19,7 +19,7 @@ interface QueueItem {
 const STAGE_LABEL: Record<AddProgress['stage'], string> = {
   queued: 'Waiting',
   detecting: 'Detecting file type',
-  hashing: 'Computing SHA-256, SHA-1, MD5',
+  hashing: 'Computing SHA-256',
   reading: 'Reading metadata',
   saving: 'Saving',
   done: 'Done',
