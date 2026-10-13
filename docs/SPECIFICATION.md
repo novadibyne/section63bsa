@@ -1,7 +1,6 @@
-# BSA Section 63 Certificate Platform — Brief for Claude Code
+# Section 63 BSA Certificate Tool — Specification
 
-> **How to use this file:** put it in an empty project folder, open Claude Code there and say:
-> *"Read CLAUDE_CODE_BRIEF.md and build Phase 1 exactly as specified. Use the statutory text in Section 2.3 word for word. Ask me before deviating from it."*
+> **Scope:** this document specifies Phase 1 (the MVP) and outlines later phases. Build Phase 1 exactly as written. The statutory text in Section 2.3 must be used word for word. Development rules are summarised in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 Proof-of-concept web app: users add electronic evidence, the app extracts technical metadata, computes hashes, and drafts the certificate in the format prescribed by the **Schedule to Section 63(4)(c) of the Bharatiya Sakshya Adhiniyam, 2023 (BSA, Act 47 of 2023)**.
 
@@ -9,21 +8,21 @@ Proof-of-concept web app: users add electronic evidence, the app extracts techni
 
 ---
 
-## 1. Your request vs my suggestion vs what you want
+## 1. Requirements: original request, recommendation and final requirement
 
-| # | Your original request | My suggestion | What you want (build requirement for Claude Code) |
+| # | Original request | Recommendation | Final requirement |
 |---|---|---|---|
 | 1 | An interface to upload pictures, recordings, WhatsApp messages and other evidence. | Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui, with a drag-and-drop uploader. | A responsive web app that accepts images, audio, video, PDFs/documents, WhatsApp chat exports (`.txt` or `.zip` with media) and any other file as generic evidence. |
 | 2 | Generate certificates under Section 63 BSA. | Generate a PDF that reproduces the **Schedule word for word**: Part A (Party) and Part B (Expert), plus the hash report annexure the Schedule asks for. | A certificate wizard that pre-fills the technical fields (hashes, file details, device metadata) and outputs a **draft** PDF in the exact Schedule format. Signature boxes stay blank so the people concerned can sign. |
 | 3 | *(implied by the certificate)* Hash values. | SHA-256 as the default. Also compute MD5 and SHA-1 because the Schedule lists all three. In the MVP, hash in the browser so files are never uploaded. | Compute and store SHA-256, SHA-1 and MD5 for every file, in the browser. Generate the hash report annexure. Let the user re-verify a file later and compare with an acquisition hash they type in. |
 | 4 | Track user logs. | **MVP:** an append-only, hash-chained audit log stored in the browser (IndexedDB) that can be exported. **Phase 2:** a server-side log in Supabase. | Log evidence creation, file hashing, re-verification, edits, certificate generation and finalising, downloads and bundle export/import, with IST timestamp and user agent. Include a "Verify chain" check. |
-| 5 | Possibly a login page. **Update: leave it out of the MVP and add it later.** | No login in Phase 1. Add Supabase Auth (email + password) with Row Level Security in Phase 2. | **No login in the MVP.** The app works straight away in the browser, and data stays on the user's device. The data model is ready for user accounts and cloud sync in Phase 2 (Appendix A). |
+| 5 | Possibly a login page. **Deferred: not in the MVP, to be added later.** | No login in Phase 1. Add Supabase Auth (email + password) with Row Level Security in Phase 2. | **No login in the MVP.** The app works straight away in the browser, and data stays on the user's device. The data model is ready for user accounts and cloud sync in Phase 2 (Appendix A). |
 | 6 | Possibly payment per certificate. | Design for Razorpay later. Not part of the MVP. | Payments are an optional future module. Leave room in the data model, but write no payment code in Phase 1. |
 | 7 | Build a proof of concept first. | A **static, browser-only** Next.js app with no backend: no Supabase and no microservices in Phase 1. | A working MVP: add files → hash → metadata → certificate draft → history, all in the browser, with export and import of a case bundle as a backup. |
 | 8 | Possibly commercialise later. | Keep evidence processing, legal templates and billing in separate modules. | Modular code (`lib/evidence`, `lib/legal`, `lib/billing`) so it can grow into a SaaS. |
-| 9 | — *(added in my suggestion)* | Build around an **Evidence** record, not a Certificate record. | `Evidence` is the central entity. Files, devices, hash reports, certificate versions and audit events all belong to it. |
-| 10 | — *(added in my suggestion)* | The app **drafts**. It cannot certify. | Clear disclaimers. The Section 63(2) declarations are made by the party, and Part B is signed by an expert. The app only pre-fills technical facts and stamps the PDF "DRAFT". |
-| 11 | — *(added in my suggestion)* | Section 63(4) requires a certificate "at each instance" the record is submitted. | Certificates are versioned for each submission, with court and case number recorded. |
+| 9 | — *(added in recommendation)* | Build around an **Evidence** record, not a Certificate record. | `Evidence` is the central entity. Files, devices, hash reports, certificate versions and audit events all belong to it. |
+| 10 | — *(added in recommendation)* | The app **drafts**. It cannot certify. | Clear disclaimers. The Section 63(2) declarations are made by the party, and Part B is signed by an expert. The app only pre-fills technical facts and stamps the PDF "DRAFT". |
+| 11 | — *(added in recommendation)* | Section 63(4) requires a certificate "at each instance" the record is submitted. | Certificates are versioned for each submission, with court and case number recorded. |
 | 12 | Host it on GitHub Pages or AWS. | GitHub Pages for the MVP (free, auto-deploys). AWS Amplify when you need AWS or Phase 2 server features. S3 + CloudFront for the lowest cost. | Build as a static export (`output: 'export'`) that runs on any of the three. Include the GitHub Pages deploy workflow. Step-by-step instructions are in Section 4. |
 
 ---
@@ -167,7 +166,7 @@ Place:
 
 ---
 
-## 3. Claude Code build specification (Phase 1 MVP: no login, runs in the browser)
+## 3. Build specification (Phase 1 MVP: no login, runs in the browser)
 
 ### 3.1 Goal
 Build a **static, browser-only** MVP. There is **no login and no backend**. Hashing, metadata extraction and PDF generation all run in the user's browser, and **evidence files are never uploaded anywhere**. Data is kept in the browser's IndexedDB, and the user can export and import a "case bundle" as a backup. The build output is plain static files that can be hosted on **GitHub Pages** or **AWS** (see Section 4).
@@ -386,7 +385,7 @@ NEXT_PUBLIC_APP_NAME="Section 63 Draft Certificate Tool"
 All three serve the same `out/` folder. In Phase 1 no evidence is stored on the host, so the hosting region doesn't matter for evidence yet.
 
 ### 4.0 Shared setup (needed for every option)
-1. Create a **new** GitHub repository, e.g. `bsa63-certificate`. Don't build it inside the `awesome` fork.
+1. Repository: [`novadibyne/section63bsa`](https://github.com/novadibyne/section63bsa).
 2. `next.config.ts`:
    ```ts
    import type { NextConfig } from 'next';
@@ -402,7 +401,7 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
 4. Check locally: run `npm run build`, then `npx serve out` and open the printed URL.
 
 ### 4.1 GitHub Pages (recommended for the MVP)
-1. Push the project to `main` in the new repo. On a **free** GitHub plan, the repo must be **public** to use Pages; private repos need GitHub Pro or a Team plan. A public repo is fine here because only the source code is public, and evidence never leaves the user's browser.
+1. Push the project to `main`. On a **free** GitHub plan, the repo must be **public** to use Pages; private repos need GitHub Pro or a Team plan. A public repo is fine here because only the source code is public, and evidence never leaves the user's browser.
 2. In the repo, go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
 3. Add `.github/workflows/deploy-pages.yml`:
    ```yaml
@@ -445,17 +444,17 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
          - id: deployment
            uses: actions/deploy-pages@v4
    ```
-4. Commit and push. Watch the run in the **Actions** tab. The site goes live at `https://<your-username>.github.io/bsa63-certificate/`.
+4. Commit and push. Watch the run in the **Actions** tab. The site goes live at `https://novadibyne.github.io/section63bsa/`.
 5. **Custom domain (optional):**
    1. Go to **Settings → Pages → Custom domain** and enter e.g. `certify.example.in`.
-   2. At your DNS provider, add a `CNAME` record: `certify` → `<your-username>.github.io`.
+   2. At your DNS provider, add a `CNAME` record: `certify` → `novadibyne.github.io`.
    3. Tick **Enforce HTTPS**.
    4. In the workflow, change `NEXT_PUBLIC_BASE_PATH` to an empty string, because the site now lives at the domain root.
 6. GitHub Pages can't set custom HTTP headers, so the Content-Security-Policy goes in a `<meta>` tag in `app/layout.tsx` (rule 7 in 3.2). Start from this and loosen only what a library actually needs:
    `default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src blob:; object-src 'none'; base-uri 'self'; form-action 'none'`
 
 ### 4.2 AWS Amplify Hosting (easiest AWS option, and it also supports Phase 2 server features)
-1. In the AWS Console, open **AWS Amplify → Create new app → GitHub**. Authorize access and pick the `bsa63-certificate` repo and the `main` branch. Region: **Asia Pacific (Mumbai) ap-south-1**.
+1. In the AWS Console, open **AWS Amplify → Create new app → GitHub**. Authorize access and pick the `novadibyne/section63bsa` repo and the `main` branch. Region: **Asia Pacific (Mumbai) ap-south-1**.
 2. Replace the build settings with this `amplify.yml`. It deploys the static `out/` folder:
    ```yaml
    version: 1
@@ -481,7 +480,7 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
 5. **Headers:** Amplify can set real HTTP headers (**Hosting → Custom headers**). Move the CSP there as a `Content-Security-Policy` header.
 
 ### 4.3 AWS S3 + CloudFront (cheapest, most control)
-1. **S3:** create a bucket, e.g. `bsa63-certificate-site`, in `ap-south-1`. Keep **Block all public access ON**.
+1. **S3:** create a bucket, e.g. `section63bsa-site`, in `ap-south-1`. Keep **Block all public access ON**.
 2. **CloudFront:** go to **Create distribution**.
    - **Origin:** the S3 bucket.
    - **Origin access:** **Origin access control** (create a new one). When CloudFront offers the bucket policy, copy it into **S3 → bucket → Permissions → Bucket policy**.
@@ -503,7 +502,7 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
 5. **Deploy manually** (needs the AWS CLI, configured):
    ```bash
    npm run build
-   aws s3 sync out/ s3://bsa63-certificate-site --delete
+   aws s3 sync out/ s3://section63bsa-site --delete
    aws cloudfront create-invalidation --distribution-id <DISTRIBUTION_ID> --paths "/*"
    ```
 6. **Custom domain:**
@@ -513,7 +512,7 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
 7. **Security headers:** **CloudFront → Policies → Response headers** lets you attach the CSP and HSTS as real headers.
 8. **Deploy automatically from GitHub** (no stored AWS keys; uses OIDC):
    1. In IAM, add the identity provider `token.actions.githubusercontent.com` (audience `sts.amazonaws.com`).
-   2. Create a role whose trust policy only allows `repo:<your-username>/bsa63-certificate:ref:refs/heads/main`. Give it these permissions:
+   2. Create a role whose trust policy only allows `repo:novadibyne/section63bsa:ref:refs/heads/main`. Give it these permissions:
       - `s3:ListBucket` on the bucket;
       - `s3:PutObject` and `s3:DeleteObject` on `bucket/*`;
       - `cloudfront:CreateInvalidation` on the distribution.
@@ -541,7 +540,7 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
            with:
              role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>
              aws-region: ap-south-1
-         - run: aws s3 sync out/ s3://bsa63-certificate-site --delete
+         - run: aws s3 sync out/ s3://section63bsa-site --delete
          - run: aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
    ```
    Store the distribution ID as a repository **variable** (**Settings → Secrets and variables → Actions → Variables**).
