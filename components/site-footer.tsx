@@ -1,0 +1,30 @@
+import { Scale } from 'lucide-react';
+import { APP_NAME, BARE_ACT_URL, REPO_URL } from '@/lib/config';
+
+export function SiteFooter() {
+  return (
+    <footer className="mt-20 border-t border-line bg-white">
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-[13px] text-ink-500 sm:px-6 md:grid-cols-[1fr_auto]">
+        <div className="flex max-w-2xl gap-3">
+          <Scale className="mt-0.5 size-4 shrink-0 text-ink-400" />
+          <p className="leading-relaxed">
+            <strong className="font-semibold text-ink-700">{APP_NAME} prepares drafts only and does not certify anything.</strong>{' '}
+            Part A must be affirmed by the party and Part B signed by an expert. Signatures are added outside the app. Check the
+            text against the official Bharatiya Sakshya Adhiniyam, 2023 and take legal advice before relying on any certificate.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-start gap-x-5 gap-y-2 md:justify-end">
+          <a href={BARE_ACT_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
+            BSA 2023 bare Act
+          </a>
+          <a href={`${REPO_URL}/blob/main/docs/SPECIFICATION.md`} target="_blank" rel="noreferrer" className="hover:text-ink-900">
+            Specification
+          </a>
+          <a href={REPO_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
+            Source code
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}

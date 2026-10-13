@@ -7,7 +7,7 @@ Users add evidence files such as photos, audio, video, documents or WhatsApp cha
 - **Part B**, filled by the expert;
 - a **Hash Report** annexure.
 
-> **Status:** in development (Phase 1 MVP). See [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
+> **Status:** Phase 1 MVP built. The app is called **Sakshya63** for now; change the name with the `NEXT_PUBLIC_APP_NAME` environment variable or in `lib/config.ts`. See [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
 
 ## Privacy
 
@@ -38,17 +38,42 @@ This tool **prepares drafts only**. It does not certify anything.
 
 ## Tech stack
 
-Next.js (static export) · TypeScript · Tailwind CSS · shadcn/ui · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer
+Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip
 
 ## Development
 
 ```bash
 npm install
-npm run dev       # local development server
-npm run test      # unit tests
+npm run dev       # local development server at http://localhost:3000
+npm run test      # unit tests (hashing, statutory text, WhatsApp parser, audit chain, PDF)
 npm run build     # static build in ./out
 npx serve out     # preview the static build
 ```
+
+End-to-end browser tests run against the static build served under the GitHub Pages sub-path:
+
+```bash
+NEXT_PUBLIC_BASE_PATH=/section63bsa npm run build
+mkdir -p .site && rm -rf .site/section63bsa && cp -r out .site/section63bsa
+npx serve .site -l 4173 &
+npx playwright install chromium   # first time only
+npm run test:e2e
+```
+
+They walk through the whole flow, from adding a file to downloading the finalised PDF. They also check that no request leaves the site, that there are no console or Content-Security-Policy errors, and that pages don't scroll sideways at phone width.
+
+### Project layout
+
+| Path | What it holds |
+|---|---|
+| `app/` | Pages: dashboard, `evidence/new`, `evidence` (overview), `certificate` (the 5-step wizard), `audit`, `settings` |
+| `components/` | UI building blocks, the drop zone, file cards, wizard steps and the certificate preview |
+| `lib/legal/schedule-63.ts` | The Schedule text, word for word. The PDF, the preview and a unit test all read from it |
+| `lib/evidence/` | Hashing (in a Web Worker), file-type detection and metadata readers |
+| `lib/pdf/render.tsx` | The certificate PDF: Part A, Part B and the Hash Report annexure |
+| `lib/audit/` | The append-only, hash-chained audit log |
+| `lib/bundle/` | Case bundle export and import, with SHA-256 verification |
+| `lib/actions.ts` | Operations that combine storage, hashing and the audit log |
 
 ## Deployment
 

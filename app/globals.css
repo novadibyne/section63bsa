@@ -1,0 +1,82 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Plus Jakarta Sans Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+
+  /* Ink: deep navy used for text and primary actions */
+  --color-ink-950: #08122b;
+  --color-ink-900: #0d1b3e;
+  --color-ink-800: #18295a;
+  --color-ink-700: #2b3d6e;
+  --color-ink-600: #45557f;
+  --color-ink-500: #636f92;
+  --color-ink-400: #8c95b0;
+  --color-ink-300: #b7bdd0;
+  --color-ink-200: #d8dce7;
+  --color-ink-100: #e9ecf3;
+  --color-ink-50: #f4f6fa;
+
+  /* Brand: emerald, used for verified / success / accents */
+  --color-brand-900: #064e36;
+  --color-brand-800: #076646;
+  --color-brand-700: #087f57;
+  --color-brand-600: #0a9466;
+  --color-brand-500: #12a873;
+  --color-brand-400: #3fc28f;
+  --color-brand-200: #b4ead2;
+  --color-brand-100: #d9f5e8;
+  --color-brand-50: #eefaf4;
+
+  --color-paper: #f6f7fb;
+  --color-sheet: #fffdf8;
+  --color-line: #e3e7ef;
+  --color-line-strong: #cfd5e2;
+
+  --shadow-card: 0 1px 2px rgb(13 27 62 / 0.04), 0 1px 1px rgb(13 27 62 / 0.03);
+  --shadow-lift: 0 10px 30px -12px rgb(13 27 62 / 0.18), 0 2px 6px -2px rgb(13 27 62 / 0.06);
+  --shadow-sheet: 0 24px 60px -24px rgb(13 27 62 / 0.28), 0 2px 8px rgb(13 27 62 / 0.05);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-paper font-sans text-ink-900 antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  ::selection {
+    background: var(--color-brand-100);
+    color: var(--color-ink-950);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .hash {
+    @apply font-mono text-[12.5px] leading-relaxed tracking-tight break-all text-ink-800;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold tracking-[0.18em] uppercase text-ink-500;
+  }
+  .dot-grid {
+    background-image: radial-gradient(rgb(13 27 62 / 0.07) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+}
+
+dialog::backdrop {
+  background: rgb(8 18 43 / 0.45);
+  backdrop-filter: blur(2px);
+}
+
+@media print {
+  header, footer, .no-print { display: none !important; }
+}
