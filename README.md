@@ -7,6 +7,8 @@ Users add evidence files such as photos, audio, video, documents or WhatsApp cha
 - **Part B**, filled by the expert;
 - a **Hash Report** annexure.
 
+> Developed as part of a research paper at **Government Law College, Thiruvananthapuram**.
+
 > **Status:** Phase 1 MVP built. The app is called **Sakshya63** for now; change the name with the `NEXT_PUBLIC_APP_NAME` environment variable or in `lib/config.ts`. See [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
 
 ## Privacy

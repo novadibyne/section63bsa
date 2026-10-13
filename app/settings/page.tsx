@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/db';
 import { clearAllData, getProfileDefaults, saveProfileDefaults, storageEstimate } from '@/lib/actions';
 import { importBundle } from '@/lib/bundle/bundle';
-import { APP_NAME, HASH_WASM_VERSION, REPO_URL } from '@/lib/config';
+import { AFFILIATION, APP_NAME, HASH_WASM_VERSION, REPO_URL } from '@/lib/config';
 import { SCHEDULE_VERSION } from '@/lib/legal/schedule-63';
 import type { ProfileDefaults } from '@/lib/types';
 import { formatBytes } from '@/lib/utils';
@@ -175,6 +175,7 @@ export default function SettingsPage() {
             <dl className="grid gap-2 text-[13px] sm:grid-cols-2">
               {[
                 ['App', APP_NAME],
+                ['Research', AFFILIATION],
                 ['Schedule text', SCHEDULE_VERSION],
                 ['Hash library', `hash-wasm ${HASH_WASM_VERSION}`],
                 ['Source', REPO_URL.replace('https://', '')],

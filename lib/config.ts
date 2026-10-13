@@ -5,5 +5,9 @@ export const HASH_WASM_VERSION = process.env.NEXT_PUBLIC_HASH_WASM_VERSION || 'u
 export const BARE_ACT_URL = 'https://www.indiacode.nic.in/bitstream/123456789/20063/1/a2023-47.pdf';
 export const REPO_URL = 'https://github.com/novadibyne/section63bsa';
 
+/** Academic context shown in the footer and Settings › About. */
+export const AFFILIATION = 'Government Law College, Thiruvananthapuram';
+export const AFFILIATION_NOTE = 'Developed as part of a research paper at';
+
 /** Warn before keeping a copy of a file larger than this in browser storage. */
 export const LARGE_FILE_WARN_BYTES = 500 * 1024 * 1024;

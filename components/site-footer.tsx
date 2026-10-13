@@ -1,5 +1,5 @@
-import { Scale } from 'lucide-react';
-import { APP_NAME, BARE_ACT_URL, REPO_URL } from '@/lib/config';
+import { GraduationCap, Scale } from 'lucide-react';
+import { AFFILIATION, AFFILIATION_NOTE, APP_NAME, BARE_ACT_URL, REPO_URL } from '@/lib/config';
 
 export function SiteFooter() {
   return (
@@ -23,6 +23,16 @@ export function SiteFooter() {
           <a href={REPO_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
             Source code
           </a>
+        </div>
+      </div>
+      <div className="border-t border-line bg-ink-50/60">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 sm:px-6" data-testid="affiliation">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-ink-950 text-white">
+            <GraduationCap className="size-4" />
+          </span>
+          <p className="text-[13px] leading-snug text-ink-600">
+            {AFFILIATION_NOTE} <strong className="font-semibold text-ink-900">{AFFILIATION}</strong>
+          </p>
         </div>
       </div>
     </footer>

@@ -15,6 +15,7 @@ for (const [name, path] of [
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (shots) await page.screenshot({ path: `${shots}/m-${name}.png` });
     expect(overflow).toBeLessThanOrEqual(0);
+    await expect(page.getByTestId('affiliation')).toContainText('Government Law College, Thiruvananthapuram');
   });
 }
 
