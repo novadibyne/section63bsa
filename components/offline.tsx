@@ -8,9 +8,22 @@ import { assetPath } from '@/lib/config';
 export function ServiceWorker() {
   React.useEffect(() => {
     if (process.env.NODE_ENV !== 'production' || !('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register(assetPath('sw.js'), { scope: assetPath('') }).catch(() => {
-      /* offline support is a bonus; the app works without it */
-    });
+    const sw = navigator.serviceWorker;
+    // When a new version takes over an open page, reload once so the whole page runs the new version.
+    const hadController = !!sw.controller;
+    let reloaded = false;
+    const onChange = () => {
+      if (!hadController || reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    };
+    sw.addEventListener('controllerchange', onChange);
+    sw.register(assetPath('sw.js'), { scope: assetPath('') })
+      .then((reg) => reg.update())
+      .catch(() => {
+        /* offline support is a bonus; the app works without it */
+      });
+    return () => sw.removeEventListener('controllerchange', onChange);
   }, []);
   return null;
 }

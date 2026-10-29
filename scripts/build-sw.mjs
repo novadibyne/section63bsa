@@ -34,41 +34,77 @@ const APP_CACHE = 'app-' + VERSION;
 const RUNTIME_CACHE = 'runtime';
 const scope = self.registration.scope;
 
+// Files under _next/static/ have the content's hash in their name, so a saved copy is never out of date.
+const IMMUTABLE = /\\/_next\\/static\\//;
+// Saved on first use so they also work offline: the scan engines and the app icons.
+const KEEP_FOR_OFFLINE = /\\/(vendor|icons)\\//;
+
 self.addEventListener('install', (event) => {
+  // A new version takes over at once instead of waiting for every tab to close; the page then reloads onto it.
+  self.skipWaiting();
   event.waitUntil(caches.open(APP_CACHE).then((c) => c.addAll(PRECACHE.map((u) => new URL(u, scope)))));
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('app-') && k !== APP_CACHE).map((k) => caches.delete(k)))),
+    (async () => {
+      // Keep the version before this one too: a page opened just before the update may still load its scripts.
+      const older = (await caches.keys()).filter((k) => k.startsWith('app-') && k !== APP_CACHE);
+      await Promise.all(older.slice(0, -1).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })(),
   );
 });
+
+async function fromCache(req) {
+  return caches.match(req, { ignoreSearch: true });
+}
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || !req.url.startsWith(scope)) return;
+  const path = new URL(req.url).pathname;
 
-  // Pages: try the network for the newest version, fall back to the cached copy when offline.
-  if (req.mode === 'navigate') {
+  // Next.js falls back to opening a page's raw data file (…/index.txt) when that data doesn't match the page
+  // (e.g. right after an update). Nobody should see that file: send them to the page itself.
+  if (req.mode === 'navigate' && path.endsWith('/index.txt')) {
+    const url = new URL(req.url);
+    url.pathname = path.slice(0, -'index.txt'.length);
+    url.searchParams.delete('_rsc');
+    event.respondWith(Response.redirect(url.href, 302));
+    return;
+  }
+
+  if (IMMUTABLE.test(path)) {
     event.respondWith(
-      fetch(req).catch(async () => (await caches.match(req, { ignoreSearch: true })) ?? (await caches.match(new URL('./', scope)))),
+      fromCache(req).then(
+        (hit) =>
+          hit ??
+          fetch(req).then((res) => {
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
+            }
+            return res;
+          }),
+      ),
     );
     return;
   }
 
-  // Everything else: cached copy first; fonts and scan engines are cached the first time they load.
+  // Pages, the data behind them (index.txt), the manifest, the scan engines and icons: always ask the server first,
+  // so every page comes from the same, newest version. The saved copy is only used offline.
+  const network = req.mode === 'navigate' ? fetch(req) : fetch(req, { cache: 'no-cache' });
   event.respondWith(
-    caches.match(req, { ignoreSearch: true }).then(
-      (hit) =>
-        hit ??
-        fetch(req).then((res) => {
-          if (res.ok && /\\/(vendor|_next\\/static\\/media)\\//.test(req.url)) {
-            const copy = res.clone();
-            caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
-          }
-          return res;
-        }),
-    ),
+    network
+      .then((res) => {
+        if (res.ok && KEEP_FOR_OFFLINE.test(path)) {
+          const copy = res.clone();
+          caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
+        }
+        return res;
+      })
+      .catch(async () => (await fromCache(req)) ?? (req.mode === 'navigate' ? await fromCache(new URL('./', scope)) : Response.error())),
   );
 });
 `;

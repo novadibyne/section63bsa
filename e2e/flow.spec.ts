@@ -136,6 +136,11 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
   await expect(page.getByTestId('history-row')).toHaveCount(1);
   await page.context().setOffline(false);
 
+  // A page's raw data file is never shown: the service worker sends the browser to the page itself.
+  await page.goto('./evidence/new/index.txt');
+  await expect(page).toHaveURL(/\/evidence\/new\/$/);
+  await expect(page.getByTestId('begin')).toBeVisible();
+
   expect(offsite, 'no requests may leave the site').toEqual([]);
   expect(errors.filter((e) => !/favicon/.test(e)), 'no console errors (incl. CSP violations)').toEqual([]);
 });
