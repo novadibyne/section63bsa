@@ -412,7 +412,7 @@ Agreed with the project owner in October 2026. All of them keep rule 7: nothing 
 | **Never sent** | Evidence, file names, hashes, names, addresses, IMEI and serial numbers, case numbers, PDF contents, error messages. An e2e test types these into the app and fails if any appears in the outgoing payload. |
 | **Retention** | 365 days. `telemetry/setup-retention.mjs`, run by the manual workflow "Set up Elastic retention", adds an ILM policy (or a data stream lifecycle on serverless) and an index template for `logs-legal_sakshya.otel-*` only, copied from the template Elastic would otherwise use. |
 | **Privacy wording** | Rule 7's notice is now "Your evidence stays on your device · Files and details you add are never uploaded · Safe and private". The CSP's `connect-src` adds only the worker's origin. The Privacy page lists what is collected and for how long. Under India's DPDP Act an IP address can be personal data, so have the notice reviewed before relying on it. |
-| **Kibana** | ES\|QL queries in `telemetry/README.md` for a "Legal Sakshya" dashboard, and a country map. |
+| **Kibana** | `telemetry/kibana/legal-sakshya-dashboard.ndjson` (built by `build-dashboard.mjs`, imported in Saved objects) adds the data view and the "Legal Sakshya usage" dashboard: totals, a side table of IP addresses with country, city, visits, PDFs and last seen, a map (heat map plus unique IPs per place, on `resource.attributes.client.geo.location`), a day × hour heatmap in IST (data view runtime fields), and charts by country, state and day. Saved object versions are Kibana 9.0's so 9.0 and later can import it. ES\|QL queries in `telemetry/README.md` for anything else. |
 
 ---
 

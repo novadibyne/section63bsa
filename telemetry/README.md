@@ -123,18 +123,29 @@ It can run before or after the first events arrive.
 
 ## 4. See the numbers in Kibana
 
-**Data view:** in Dev Tools, run:
+**Import the ready-made dashboard.** Download
+[`kibana/legal-sakshya-dashboard.ndjson`](kibana/legal-sakshya-dashboard.ndjson) (on GitHub: open it, then
+**Download raw file**). In Kibana open **Stack Management** → **Saved objects** → **Import**, choose the file, keep
+*Check for existing objects* → *Automatically overwrite conflicts*, and click **Import**. Then open **Dashboards** →
+**Legal Sakshya usage**.
 
-```
-POST kbn:/api/data_views/data_view
-{
-  "data_view": { "name": "Legal Sakshya usage", "title": "logs-legal_sakshya.otel-*", "timeFieldName": "@timestamp" },
-  "override": true
-}
-```
+| Panel | Shows |
+|---|---|
+| Unique IP addresses · Visits · PDF certificates made | Totals for the chosen time range (30 days to start with) |
+| **Visitors by IP address** (right-hand side) | Each public IP address with its country, city, visits (pages opened), PDFs made and when it was last seen, most visits first |
+| **Where visitors are** | Map with a heat map of visitor locations and circles showing the number of unique IP addresses in each place. Zoom in for cities |
+| **When people visit (Indian time)** | Heatmap of visits by day of the week and hour |
+| Visitors by country · by state / region | Unique IP addresses per country and per state |
+| Visits and unique IPs per day | Daily trend |
 
-**Dashboard:** in **Discover**, switch to **ES|QL**, paste a query below and run it. Use the chart icon to pick a
-chart, then **Save** → **Add to dashboard**, putting all panels on one dashboard called "Legal Sakshya".
+Click any IP, country, city or map circle to filter the whole dashboard to it. The import also adds the data view
+*Legal Sakshya usage* (`logs-legal_sakshya.otel-*`). It works on Elastic Cloud 9.0 and later, and was tested on
+Kibana 9.0.8 and 9.5.5 with data sent through the worker. The dashboard is built by
+[`kibana/build-dashboard.mjs`](kibana/build-dashboard.mjs): change it there, run
+`node telemetry/kibana/build-dashboard.mjs > telemetry/kibana/legal-sakshya-dashboard.ndjson`, and import again.
+
+**Your own charts:** in **Discover**, switch to **ES|QL**, paste a query below and run it. Use the chart icon to pick
+a chart, then **Save** → **Add to dashboard**.
 
 Visits per day:
 ```esql
@@ -239,8 +250,8 @@ name exactly as your Kibana shows it.
 
 ## 5. Moving to another Elastic deployment
 
-1. In the new deployment, create the worker's API key (step 1) and set up retention (step 3, with that deployment's
-   `ELASTIC_URL` and a new setup key).
+1. In the new deployment, create the worker's API key (step 1), set up retention (step 3, with that deployment's
+   `ELASTIC_URL` and a new setup key) and import the dashboard (step 4).
 2. In Cloudflare, change the worker's `ELASTIC_OTLP_ENDPOINT` and `ELASTIC_API_KEY`.
 
 The website doesn't change. Data already collected stays in the old deployment unless you copy it over (snapshot
