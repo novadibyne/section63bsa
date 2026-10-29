@@ -1,5 +1,5 @@
 import { Ban, Camera, Cpu, FileLock2, HardDrive, Plane, ServerOff, ShieldCheck } from 'lucide-react';
-import { APP_NAME, PRIVACY_BADGE, PRIVACY_LINE, REPO_URL } from '@/lib/config';
+import { APP_NAME, PRIVACY_BADGE, PRIVACY_LINE } from '@/lib/config';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { OfflineStatus } from '@/components/offline';
 
@@ -57,12 +57,6 @@ export default function PrivacyPage() {
             ))}
           </ol>
           <OfflineStatus />
-          <p className="text-[13px] text-ink-500">
-            The code is public, so anyone can check how it works:{' '}
-            <a href={REPO_URL} target="_blank" rel="noreferrer" className="font-medium text-brand-700 underline-offset-2 hover:underline">
-              {REPO_URL.replace('https://', '')}
-            </a>
-          </p>
         </CardBody>
       </Card>
 

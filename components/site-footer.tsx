@@ -1,6 +1,6 @@
 import { GraduationCap, Scale } from 'lucide-react';
 import Link from 'next/link';
-import { AFFILIATION, AFFILIATION_NOTE, APP_NAME, BARE_ACT_URL, LICENSES_URL, REPO_URL } from '@/lib/config';
+import { AFFILIATION, AFFILIATION_NOTE, APP_NAME, BARE_ACT_URL } from '@/lib/config';
 
 export function SiteFooter() {
   return (
@@ -23,12 +23,6 @@ export function SiteFooter() {
           </Link>
           <a href={BARE_ACT_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
             BSA 2023 bare Act
-          </a>
-          <a href={REPO_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
-            Source code
-          </a>
-          <a href={LICENSES_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
-            Open-source licences
           </a>
         </div>
       </div>

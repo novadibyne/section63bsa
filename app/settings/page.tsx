@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/db';
 import { clearAllData, getProfileDefaults, saveProfileDefaults, storageEstimate } from '@/lib/actions';
 import { importBundle } from '@/lib/bundle/bundle';
-import { AFFILIATION, APP_NAME, HASH_WASM_VERSION, LICENSES_URL, REPO_URL, SITE_DOMAIN } from '@/lib/config';
+import { AFFILIATION, APP_NAME, HASH_WASM_VERSION, SITE_DOMAIN } from '@/lib/config';
 import { SCHEDULE_VERSION } from '@/lib/legal/schedule-63';
 import type { ProfileDefaults } from '@/lib/types';
 import { formatBytes } from '@/lib/utils';
@@ -181,7 +181,6 @@ export default function SettingsPage() {
                 ['Research', AFFILIATION],
                 ['Schedule text', SCHEDULE_VERSION],
                 ['Hash library', `hash-wasm ${HASH_WASM_VERSION}`],
-                ['Source', REPO_URL.replace('https://', '')],
               ].map(([k, v]) => (
                 <div key={k} className="flex min-w-0 gap-3">
                   <dt className="w-28 shrink-0 text-ink-500">{k}</dt>
@@ -196,9 +195,6 @@ export default function SettingsPage() {
               <Link href="/privacy/" className="text-brand-700 hover:underline">
                 Privacy
               </Link>
-              <a href={LICENSES_URL} target="_blank" rel="noreferrer" className="text-brand-700 hover:underline">
-                Open-source licences
-              </a>
             </div>
             <InstallApp className="mt-3 -ml-3" />
           </CardBody>
