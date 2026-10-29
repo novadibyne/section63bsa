@@ -38,6 +38,7 @@ const USED_FOR = {
   'date-fns-tz': 'Dates in DD/MM/YYYY and IST',
   'tesseract.js': 'Reads IMEI / serial text from a photo (OCR)',
   'zxing-wasm': 'Reads barcodes on phone box labels',
+  '@elastic/apm-rum': 'Usage statistics (Elastic APM, only when switched on)',
   '@tesseract.js-data/eng': 'English data for the text reader',
   'lucide-react': 'Icons',
   sonner: 'Notifications',
@@ -54,13 +55,16 @@ const nameOf = (key) => key.slice(key.lastIndexOf('node_modules/') + 'node_modul
 
 function licenceOf(key) {
   const declared = lock[key]?.license;
-  if (declared) return declared;
+  if (declared && !/^SEE LICENSE/i.test(declared)) return declared;
   // A few packages only say it in their LICENSE file.
   for (const f of ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'license']) {
     const p = join(root, key, f);
-    if (existsSync(p) && /^\s*(The )?MIT License/i.test(readFileSync(p, 'utf8'))) return 'MIT';
+    if (!existsSync(p)) continue;
+    const text = readFileSync(p, 'utf8');
+    if (/^\s*(The )?MIT License/i.test(text)) return 'MIT';
+    if (/free and unencumbered software released into the public domain/i.test(text)) return 'Unlicense';
   }
-  return 'UNKNOWN';
+  return declared ?? 'UNKNOWN';
 }
 
 function walk(dir) {

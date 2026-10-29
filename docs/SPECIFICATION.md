@@ -402,6 +402,19 @@ Agreed with the project owner in October 2026. All of them keep rule 7: nothing 
 | 5 | **Share on phones** | Where the phone can share files, "Share or save" opens the share sheet with the stored PDF (Save to Files, WhatsApp, email). PDFs are loaded before the tap because Safari only allows sharing straight from it. |
 | 6 | **Simpler home page** | Only the headline, "Start a new certificate", the user's recent records and four one-line steps. The case-law history (including *Arjun Panditrao Khotkar*) is only on the Why it matters page. |
 
+### 3.16 Usage statistics (October 2026)
+
+| Point | What the app does |
+|---|---|
+| **Why** | The owner wants to know how many people use the site, from where, and how many PDFs are made. |
+| **How** | Elastic APM **Real User Monitoring** (`@elastic/apm-rum`, MIT). The browser sends events straight to the APM endpoint of the owner's Elastic deployment. There is no proxy, worker or server, and no API key in the site. Off unless `NEXT_PUBLIC_APM_SERVER_URL` is set at build time; the deploy workflow reads it from the repository variable `APM_SERVER_URL`. Changing that variable moves the statistics to another deployment. |
+| **Events** | `page-load` (automatic), `page_view`, `certificate_started`, `evidence_added`, `pdf_generated`, `pdf_downloaded`, `device_scan`, `app_installed`, plus JavaScript errors. Each carries a random visitor ID (`user.id`). Labels are limited to an allow-list in `lib/telemetry.ts` (`path`, `parts`, `kind`, `via`, `file_kind`, `imei_count`, `serial_found`, `model_found`). Page URLs lose their query string, and per-file download timings are dropped. |
+| **Never sent** | Evidence, file names, hashes, names, addresses, IMEI and serial numbers, case numbers, PDF contents. An e2e test types these into the app and fails if any appears in the outgoing payload. |
+| **Added by Elastic** | `client.ip` (stored for every visitor, at the owner's choice), `client.geo.*` (country, region, city, location) and `user_agent.*`. |
+| **Retention** | 365 days, set by `telemetry/elastic-setup.console` (ILM policy, or data stream lifecycle where that applies). |
+| **Privacy wording** | Rule 7's notice is now "Your evidence stays on your device · Files and details you add are never uploaded · Safe and private". The CSP's `connect-src` adds only the APM endpoint's origin. When statistics are on, the Privacy page lists what is collected and for how long, in place of "No tracking". Under India's DPDP Act an IP address can be personal data, so have the notice reviewed before relying on it. |
+| **Kibana** | Kibana's built-in User Experience app, plus ES\|QL queries in `telemetry/README.md` for a "Legal Sakshya" dashboard. |
+
 ---
 
 ## 4. Hosting

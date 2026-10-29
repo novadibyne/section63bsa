@@ -8,7 +8,8 @@ import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { ServiceWorker } from '@/components/offline';
 import { AppToaster } from '@/components/app-toaster';
-import { APP_NAME, APP_TAGLINE, SITE_URL, assetPath } from '@/lib/config';
+import { Telemetry } from '@/components/telemetry';
+import { APM_SERVER_URL, APP_NAME, APP_TAGLINE, SITE_URL, assetPath } from '@/lib/config';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -23,14 +24,16 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: '#0d1b3e', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
-// connect-src 'self' means the browser itself refuses to send file contents anywhere else.
+// connect-src means the browser itself refuses to send anything anywhere else. The only exception is the
+// Elastic APM server for usage statistics, when one is configured (lib/telemetry.ts).
+const STATS_ORIGIN = APM_SERVER_URL ? new URL(APM_SERVER_URL).origin : '';
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' blob: data:",
+  `connect-src 'self' blob: data:${STATS_ORIGIN ? ` ${STATS_ORIGIN}` : ''}`,
   "worker-src 'self' blob:",
   "frame-src 'self' blob:",
   "media-src 'self' blob:",
@@ -48,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="flex-1">{children}</main>
         <SiteFooter />
         <ServiceWorker />
+        <Telemetry />
         <AppToaster />
       </body>
     </html>

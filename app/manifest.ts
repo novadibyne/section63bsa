@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${APP_NAME} · ${APP_TAGLINE}`,
     short_name: APP_NAME,
-    description: 'Draft the Section 63 BSA certificate for digital evidence. 100% on-device: nothing you add ever leaves your phone.',
+    description: 'Draft the Section 63 BSA certificate for digital evidence. Your evidence stays on your phone: files are never uploaded.',
     id: './',
     start_url: './',
     scope: './',

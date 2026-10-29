@@ -32,6 +32,10 @@ jobs:
       - run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Usage statistics: the Elastic APM endpoint, from Settings → Secrets and variables → Actions → Variables.
+          # Leave the variable unset to turn statistics off. Point it at another Elastic deployment to move them.
+          NEXT_PUBLIC_APM_SERVER_URL: ${{ vars.APM_SERVER_URL }}
+          NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: out

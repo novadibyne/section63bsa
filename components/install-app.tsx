@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Share, Smartphone, SquarePlus } from 'lucide-react';
 import { APP_NAME } from '@/lib/config';
+import { track } from '@/lib/telemetry';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 
@@ -30,6 +31,7 @@ export function InstallApp({ className }: { className?: string }) {
     const onInstalled = () => {
       setInstalled(true);
       setPrompt(null);
+      track('app_installed');
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);

@@ -7,8 +7,18 @@ export const HASH_WASM_VERSION = process.env.NEXT_PUBLIC_HASH_WASM_VERSION || 'u
 export const BARE_ACT_URL = 'https://www.indiacode.nic.in/bitstream/123456789/20063/1/a2023-47.pdf';
 
 /** The privacy promise. Shown on every page and wherever something is added. */
-export const PRIVACY_BADGE = '100% on-device · 100% safe';
-export const PRIVACY_LINE = 'Nothing you add ever leaves this device.';
+export const PRIVACY_BADGE = 'Your evidence stays on your device';
+export const PRIVACY_DETAIL = 'Files and details you add are never uploaded · Safe and private';
+export const PRIVACY_LINE = 'Your evidence and the details you enter never leave your device.';
+
+/**
+ * Usage statistics (Elastic APM Real User Monitoring). Off unless the deploy sets NEXT_PUBLIC_APM_SERVER_URL,
+ * e.g. from the GitHub repository variable APM_SERVER_URL. To use another Elastic deployment, change that variable.
+ */
+export const APM_SERVER_URL = (process.env.NEXT_PUBLIC_APM_SERVER_URL || '').replace(/\/+$/, '');
+export const APM_SERVICE_NAME = 'legal-sakshya';
+/** How long Elastic keeps usage statistics; shown on the Privacy page and set by telemetry/elastic-setup.txt. */
+export const STATS_RETENTION_DAYS = 365;
 
 /** Academic context shown in the footer and Settings › About. */
 export const AFFILIATION = 'Government Law College, Thiruvananthapuram';

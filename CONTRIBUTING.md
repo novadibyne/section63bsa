@@ -14,6 +14,7 @@ The full project specification is in [`docs/SPECIFICATION.md`](docs/SPECIFICATIO
 - **Dependencies:** only open-source libraries under permissive licences (MIT, Apache-2.0, ISC, BSD, OFL for fonts). After adding, removing or upgrading one, run `npm run licenses -- --check` and commit the updated `THIRD_PARTY_LICENSES.md`.
 - **No CDNs:** if a library downloads code or data at run time (a worker, WebAssembly, a model), copy those files into `public/vendor/` in `scripts/copy-scan-assets.mjs` and point the library there. The CSP blocks everything else.
 - **Photos for device IDs** are read and discarded. Never store, hash or log them.
+- **Usage statistics** (`lib/telemetry.ts`) may only send event names and the allow-listed labels. Never add a label that can hold user-entered text or evidence details, and keep `e2e/telemetry.spec.ts` passing.
 
 ## Before opening a pull request
 

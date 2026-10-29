@@ -1,15 +1,30 @@
-import { Ban, Camera, Cpu, FileLock2, HardDrive, Plane, ServerOff, ShieldCheck } from 'lucide-react';
-import { APP_NAME, PRIVACY_BADGE, PRIVACY_LINE } from '@/lib/config';
+import { Ban, BarChart3, Camera, Cpu, FileLock2, HardDrive, Plane, ServerOff, ShieldCheck } from 'lucide-react';
+import { APM_SERVER_URL, APP_NAME, PRIVACY_BADGE, PRIVACY_LINE, STATS_RETENTION_DAYS } from '@/lib/config';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { OfflineStatus } from '@/components/offline';
 
 export const metadata = { title: 'Privacy' };
 
+/** Usage statistics are on when the site is built with an Elastic APM address (see lib/telemetry.ts). */
+const STATS_ON = !!APM_SERVER_URL;
+
 const PROMISES = [
   { icon: Cpu, title: 'Everything happens on this device', text: 'Files are fingerprinted (hashed), read and turned into the certificate PDF inside this browser.' },
-  { icon: ServerOff, title: 'No server, no account', text: 'There is nowhere for your files to go: the app has no backend and no login.' },
-  { icon: Ban, title: 'No tracking', text: 'No analytics, no ads and no error-reporting services. Fonts and tools are served by this site itself.' },
-  { icon: FileLock2, title: 'Locked by the browser', text: 'A security policy tells the browser to refuse any attempt to send data to another website.' },
+  { icon: ServerOff, title: 'No account, no upload', text: 'There is no login, and your files have nowhere to go: the app has no server for them.' },
+  STATS_ON
+    ? {
+        icon: BarChart3,
+        title: 'Usage statistics',
+        text: `To see how the app is used, we record visits and the kind of certificate made (for example “final PDF, Part A only”), with your IP address, approximate location, browser and device. Kept for ${STATS_RETENTION_DAYS} days. Never your evidence, files, names, IMEI numbers or certificate contents.`,
+      }
+    : { icon: Ban, title: 'No tracking', text: 'No analytics, no ads and no error-reporting services. Fonts and tools are served by this site itself.' },
+  {
+    icon: FileLock2,
+    title: 'Locked by the browser',
+    text: STATS_ON
+      ? 'A security policy tells the browser to refuse to send data to any other website, except the usage-statistics service, which only receives the counts above.'
+      : 'A security policy tells the browser to refuse any attempt to send data to another website.',
+  },
   { icon: Camera, title: 'Photos for IMEI scans are thrown away', text: 'They are read on this device to find the numbers, then dropped. They are never saved or uploaded.' },
 ];
 

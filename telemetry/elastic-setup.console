@@ -1,0 +1,87 @@
+# Legal Sakshya usage statistics: one-time setup for an Elastic deployment.
+#
+# How to use: open Kibana → Dev Tools (Console), paste this whole file, then run each request in turn
+# (click a request, then the ▶ button, or press Ctrl/Cmd + Enter). Run it again on any other Elastic
+# deployment you move the statistics to. Every request is safe to run more than once.
+#
+# What it does:
+#   1. keeps the statistics for 365 days, then deletes them;
+#   2. adds a Kibana data view so the data shows up in Discover, Lens and Maps.
+# IP addresses, country, state, city, browser, operating system and device are added by Elastic's
+# APM integration itself; nothing needs to be set up for that.
+#
+# Note: these rules apply to all browser (RUM) data and APM errors in this deployment, not only Legal Sakshya's.
+
+
+# ── 0. Check: which version is this, and has any data arrived yet? ───────────────────────────────
+
+GET /
+
+GET _data_stream/traces-apm.rum-default
+
+
+# ── 1. Keep usage statistics for 365 days ──────────────────────────────────────────────────────
+
+# The retention policy: start a new index every 30 days, delete each one 365 days after that.
+PUT _ilm/policy/legal-sakshya-365-days
+{
+  "policy": {
+    "phases": {
+      "hot": { "actions": { "rollover": { "max_age": "30d", "max_primary_shard_size": "50gb" } } },
+      "delete": { "min_age": "365d", "actions": { "delete": {} } }
+    }
+  }
+}
+
+# Use it for browser events (page views, PDFs made, …). The "lifecycle" part is for deployments that use
+# data stream lifecycles instead of the policy above; Elastic uses whichever applies.
+PUT _component_template/traces-apm.rum@custom
+{
+  "template": {
+    "settings": { "index.lifecycle.name": "legal-sakshya-365-days" },
+    "lifecycle": { "data_retention": "365d" }
+  }
+}
+
+# …and for app errors reported from the browser.
+PUT _component_template/logs-apm.error@custom
+{
+  "template": {
+    "settings": { "index.lifecycle.name": "legal-sakshya-365-days" },
+    "lifecycle": { "data_retention": "365d" }
+  }
+}
+
+# Apply the new rules to data that is already there. If these say "no such index" or
+# "data stream missing", no data has arrived yet: that's fine, new data will follow the rules.
+POST traces-apm.rum-default/_rollover
+
+POST logs-apm.error-default/_rollover
+
+
+# ── 2. A data view for Discover, Lens and Maps ─────────────────────────────────────────────────
+
+POST kbn:/api/data_views/data_view
+{
+  "data_view": {
+    "name": "Legal Sakshya usage",
+    "title": "traces-apm.rum-*",
+    "timeFieldName": "@timestamp"
+  },
+  "override": true
+}
+
+
+# ── 3. Check it worked (after the first visits have arrived) ───────────────────────────────────
+
+# "ilm_policy": "legal-sakshya-365-days" (or "lifecycle": { "data_retention": "365d" }) means retention is set.
+GET _data_stream/traces-apm.rum-default
+
+# The latest events, with where they came from.
+GET traces-apm.rum-*/_search
+{
+  "size": 5,
+  "sort": [{ "@timestamp": "desc" }],
+  "_source": ["@timestamp", "transaction.name", "labels", "client.ip", "client.geo.country_name", "client.geo.city_name", "user_agent.name", "user.id"],
+  "query": { "term": { "service.name": "legal-sakshya" } }
+}

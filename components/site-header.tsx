@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { ArrowRight, BookOpenText, FileClock, House, Lock, Plus, Settings2, ShieldCheck } from 'lucide-react';
 import { LogoMark } from '@/components/brand/logo';
 import { ButtonLink } from '@/components/ui/button';
-import { APP_NAME, APP_TAGLINE, PRIVACY_BADGE, PRIVACY_LINE } from '@/lib/config';
+import { APP_NAME, APP_TAGLINE, PRIVACY_BADGE, PRIVACY_DETAIL } from '@/lib/config';
 import { cn } from '@/lib/utils';
 
 const NAV = [
@@ -23,14 +23,14 @@ function PrivacyBar() {
       href="/privacy/"
       className="group block bg-brand-700 text-white hover:bg-brand-800"
       data-testid="privacy-bar"
-      title="Files, photos and certificates are processed in this browser and never uploaded"
+      title="Your files, photos and certificates are processed in this browser and never uploaded"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-1.5 text-center text-[12.5px] sm:px-6">
         <Lock className="size-3.5 shrink-0" />
         <span>
           <strong className="font-semibold">{PRIVACY_BADGE}</strong>
-          <span className="hidden sm:inline"> · {PRIVACY_LINE}</span>
-          <span className="sm:hidden"> · Nothing is uploaded</span>
+          <span className="hidden sm:inline"> · {PRIVACY_DETAIL}</span>
+          <span className="sm:hidden"> · Safe and private</span>
         </span>
         <ArrowRight className="hidden size-3.5 shrink-0 opacity-70 transition-transform group-hover:translate-x-0.5 sm:block" />
       </div>

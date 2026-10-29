@@ -3,11 +3,17 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { PDFDocument } from 'pdf-lib';
+import { STATS_ORIGIN, stubStats } from './stats';
 
 const fixture = join(__dirname, '../tests/fixtures/whatsapp-android.txt');
 const imeiPhoto = join(__dirname, '../tests/fixtures/imei-screen.png');
 const expectedSha256 = createHash('sha256').update(readFileSync(fixture)).digest('hex');
 const shots = process.env.E2E_SCREENSHOTS;
+
+// The usage-statistics endpoint is the one place the app may talk to; answer it like Elastic would.
+test.beforeEach(async ({ page }) => {
+  await stubStats(page);
+});
 
 /** Opens "Start a new certificate", picks the parts and lands on step 1. */
 async function startCertificate(page: Page, parts: 'both' | 'A' | 'B') {
@@ -25,7 +31,7 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
   page.on('request', (r) => {
     const u = new URL(r.url());
     // Only network requests count; chrome:// and chrome-extension:// are the browser's own PDF viewer.
-    if (u.protocol.startsWith('http') && !['localhost', '127.0.0.1'].includes(u.hostname)) offsite.push(r.url());
+    if (u.protocol.startsWith('http') && !['localhost', '127.0.0.1'].includes(u.hostname) && u.origin !== STATS_ORIGIN) offsite.push(r.url());
   });
   const snap = async (name: string) => shots && page.screenshot({ path: `${shots}/${info.project.name}-${name}.png`, fullPage: true });
 
@@ -131,7 +137,7 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
   await expect(page.getByTestId('offline-status')).toContainText('Ready to work offline', { timeout: 30_000 });
   await page.context().setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Nothing you add ever leaves this device');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Your evidence and the details you enter never leave your device');
   await page.goto('./history/');
   await expect(page.getByTestId('history-row')).toHaveCount(1);
   await page.context().setOffline(false);
@@ -141,7 +147,7 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
   await expect(page).toHaveURL(/\/evidence\/new\/$/);
   await expect(page.getByTestId('begin')).toBeVisible();
 
-  expect(offsite, 'no requests may leave the site').toEqual([]);
+  expect(offsite, 'no requests may leave the site, except usage statistics').toEqual([]);
   expect(errors.filter((e) => !/favicon/.test(e)), 'no console errors (incl. CSP violations)').toEqual([]);
 });
 
@@ -150,7 +156,7 @@ test('reads make & model, IMEIs and the serial number from a box label', async (
   page.on('request', (r) => {
     const u = new URL(r.url());
     // Only network requests count; chrome:// and chrome-extension:// are the browser's own PDF viewer.
-    if (u.protocol.startsWith('http') && !['localhost', '127.0.0.1'].includes(u.hostname)) offsite.push(r.url());
+    if (u.protocol.startsWith('http') && !['localhost', '127.0.0.1'].includes(u.hostname) && u.origin !== STATS_ORIGIN) offsite.push(r.url());
   });
   await startCertificate(page, 'both');
   await page.getByTestId('file-input').setInputFiles(fixture);
@@ -171,7 +177,7 @@ test('reads make & model, IMEIs and the serial number from a box label', async (
   await expect(page.getByLabel('IMEI value').nth(1)).toHaveValue('356938035643809');
   await expect(page.getByLabel('Make & Model')).toHaveValue('Samsung Galaxy S23 (SM-S911B/DS)');
   await expect(page.getByRole('textbox', { name: 'Serial Number' })).toHaveValue('R5CW12345AB');
-  expect(offsite, 'no requests may leave the site').toEqual([]);
+  expect(offsite, 'no requests may leave the site, except usage statistics').toEqual([]);
 });
 
 test('makes only Part B: Part A is skipped and left out of the PDF', async ({ page }, info) => {

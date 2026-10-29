@@ -13,15 +13,23 @@ Users add evidence files such as photos, audio, video, documents or WhatsApp cha
 
 > **Status:** Phase 1 MVP built, with the additions listed in [Section 3.14 of the specification](docs/SPECIFICATION.md#314-additions-after-phase-1). The name comes from `lib/config.ts` and can be overridden with the `NEXT_PUBLIC_APP_NAME` environment variable.
 
-## Privacy: 100% on-device · 100% safe
+## Privacy: your evidence stays on your device
 
-**Nothing you add ever leaves your device.**
+**Your evidence and the details you enter never leave your device.**
 
-- Evidence files are hashed, read and turned into the certificate PDF **inside your browser**. They are **never uploaded**. There is no server and no login.
+- Evidence files are hashed, read and turned into the certificate PDF **inside your browser**. They are **never uploaded**. There is no server for them and no login.
 - Photos taken to read an IMEI or serial number are read on the device and then **thrown away**. They are never saved or uploaded.
-- A Content-Security-Policy (`connect-src 'self'`) makes the browser refuse to send data to any other site. The text and barcode readers are served by the site itself, not loaded from a CDN.
+- A Content-Security-Policy (`connect-src`) makes the browser refuse to send data to any other site. The only exception is the Elastic APM endpoint for usage statistics, when one is configured. The text and barcode readers are served by the site itself, not loaded from a CDN.
 - After the first visit the app **works offline**. Anyone can check this: turn on airplane mode and reload. The in-app **Privacy** page walks through it.
 - Records stay in your browser's storage. Export a case bundle (`.zip`) to back them up or move them to another computer.
+
+### Usage statistics (optional)
+
+When the deploy sets an Elastic APM endpoint (the GitHub variable `APM_SERVER_URL`), the app reports **how it is used** to Elastic: visits, unique visitors, certificates started, PDFs made and downloaded, phone scans and installs. Elastic adds each visitor's IP address, location, browser and device. The data is kept for 365 days.
+
+It never sends evidence, file names, hashes, names, IMEI or serial numbers, case numbers or PDF contents. The Privacy page describes the statistics whenever they are switched on.
+
+Setup, the Kibana dashboard queries and how to move to another Elastic deployment are in **[`telemetry/README.md`](telemetry/README.md)**. Without the variable, statistics are off.
 
 ## Features
 
@@ -53,7 +61,7 @@ This tool **prepares drafts only**. It does not certify anything.
 
 ## Tech stack
 
-Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip · tesseract.js (OCR) · zxing-wasm (barcodes)
+Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip · tesseract.js (OCR) · zxing-wasm (barcodes) · Elastic APM RUM agent (usage statistics)
 
 ## Open-source licences
 
@@ -75,17 +83,17 @@ npx serve out     # preview the static build
 
 `npm run dev` and `npm run build` first copy the text and barcode readers into `public/vendor/` (`scripts/copy-scan-assets.mjs`). `npm run build` then writes the offline service worker, `out/sw.js` (`scripts/build-sw.mjs`).
 
-End-to-end browser tests run against the static build served under the GitHub Pages sub-path:
+End-to-end browser tests run against the static build served under the GitHub Pages sub-path, with usage statistics pointed at a test address (`https://apm.invalid`) that the tests answer themselves:
 
 ```bash
-NEXT_PUBLIC_BASE_PATH=/section63bsa npm run build
+NEXT_PUBLIC_APM_SERVER_URL=https://apm.invalid NEXT_PUBLIC_BASE_PATH=/section63bsa npm run build
 mkdir -p .site && rm -rf .site/section63bsa && cp -r out .site/section63bsa
 npx serve .site -l 4173 &
 npx playwright install chromium   # first time only
 npm run test:e2e
 ```
 
-They walk through the whole flow: choosing the parts, adding a file, reading both IMEIs and the serial number from a photo, filling Parts A and B, downloading the finalised PDF and downloading it again from My certificates. Other tests read the make & model and barcodes on a box label, and make a Part B–only certificate. The flow tests run three times: desktop, an Android phone (Pixel 7) and an iPhone-sized screen, all in Chromium; Safari's own engine is not part of the automated tests. They also check that the app works offline, that no request leaves the site, that there are no console or Content-Security-Policy errors, and that pages don't scroll sideways at phone width.
+They walk through the whole flow: choosing the parts, adding a file, reading both IMEIs and the serial number from a photo, filling Parts A and B, downloading the finalised PDF and downloading it again from My certificates. Other tests read the make & model and barcodes on a box label, and make a Part B–only certificate. The flow tests run three times: desktop, an Android phone (Pixel 7) and an iPhone-sized screen, all in Chromium; Safari's own engine is not part of the automated tests. Another test turns on usage statistics and checks that page views, certificates and PDFs are reported, and that nothing typed or added into the app (names, IMEI, hashes, file names, record IDs) appears in what is sent. They also check that the app works offline, that no request leaves the site except usage statistics, that there are no console or Content-Security-Policy errors, and that pages don't scroll sideways at phone width.
 
 ### Project layout
 
@@ -133,3 +141,4 @@ Steps for AWS Amplify and for S3 + CloudFront are in [Section 4 of the specifica
 - [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md): requirements, the Section 63 and Schedule field mapping, the statutory text, the build specification and hosting
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): development rules
 - [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md): open-source licences
+- [`telemetry/README.md`](telemetry/README.md): usage statistics with Elastic and Kibana

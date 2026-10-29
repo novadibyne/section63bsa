@@ -6,6 +6,7 @@ import { sha256Bytes } from './evidence/hash-core';
 import { extractMetadata } from './evidence/metadata';
 import { istDateInput, istTimeInput, nowIso } from './time';
 import { downloadBlob, newId, safeFilename } from './utils';
+import { track } from './telemetry';
 import type { CertificateContext } from './legal/certificate-values';
 import type { Certificate, CertificateParts, Device, Evidence, EvidenceFile, PartA, PartB, ProfileDefaults } from './types';
 
@@ -20,6 +21,7 @@ export async function createEvidence(parts: CertificateParts = 'both'): Promise<
   await db.evidence.add(ev);
   await appendAudit('evidence.create', { evidenceId: ev.id, details: { title: ev.title } });
   await createCertificateVersion(ev.id, parts);
+  track('certificate_started', { parts });
   // Ask the browser to keep this site's data (Safari otherwise clears it after a while without visits).
   void requestPersistentStorage();
   return ev.id;
@@ -126,6 +128,7 @@ export async function addFile(
     await db.evidence.update(evidenceId, patch);
   });
   if (keepCopy) void requestPersistentStorage();
+  track('evidence_added', { file_kind: det.kind });
   onProgress({ stage: 'done', progress: 1 });
   return record;
 }
@@ -206,6 +209,7 @@ export async function logDeviceScan(evidenceId: string, imeiCount: number, seria
     evidenceId,
     details: { imeiCount, serialFound, modelFound, message: `${what || 'Nothing'} used; photo not kept` },
   });
+  track('device_scan', { imei_count: imeiCount, serial_found: serialFound, model_found: modelFound });
 }
 
 export async function logDevicesSaved(evidenceId: string) {
@@ -331,6 +335,7 @@ export async function generateDraftPdf(certId: string): Promise<{ blob: Blob; sh
     certificateId: certId,
     details: { version: ctx.cert.version, pdfSha256: out.sha256, draft: true },
   });
+  track('pdf_generated', { kind: 'draft', parts: ctx.cert.parts ?? 'both' });
   return out;
 }
 
@@ -349,6 +354,7 @@ export async function finaliseCertificate(certId: string): Promise<{ blob: Blob;
     certificateId: certId,
     details: { version: ctx.cert.version, pdfSha256: out.sha256 },
   });
+  track('pdf_generated', { kind: 'final', parts: ctx.cert.parts ?? 'both' });
   return out;
 }
 
@@ -370,6 +376,7 @@ export async function downloadCertificatePdf(certId: string) {
     certificateId: certId,
     details: { version: ctx.cert.version, final: stored!.final, pdfSha256: stored!.sha256 },
   });
+  track('pdf_downloaded', { kind: stored!.final ? 'final' : 'draft', parts: ctx.cert.parts ?? 'both', via: 'download' });
 }
 
 /**
@@ -391,6 +398,7 @@ export async function shareStoredPdf(evidence: Evidence, cert: Certificate, pdf:
     certificateId: cert.id,
     details: { version: cert.version, final: pdf.final, pdfSha256: pdf.sha256, via: 'share' },
   });
+  track('pdf_downloaded', { kind: pdf.final ? 'final' : 'draft', parts: cert.parts ?? 'both', via: 'share' });
   return true;
 }
 

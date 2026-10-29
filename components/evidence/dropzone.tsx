@@ -4,7 +4,6 @@ import * as React from 'react';
 import { CloudUpload, Lock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { addFile, storageEstimate, type AddProgress } from '@/lib/actions';
-import { PRIVACY_BADGE } from '@/lib/config';
 import { cn, formatBytes } from '@/lib/utils';
 import { Progress } from '@/components/ui/misc';
 import { Toggle } from '@/components/ui/form';
@@ -126,7 +125,7 @@ export function Dropzone({ evidenceId, compact }: { evidenceId: string; compact?
         <Toggle id="keep-copy" checked={keepCopy} onChange={setKeepCopy} label="Keep a copy of each file in this browser" />
         <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-brand-800">
           <Lock className="size-3.5 text-brand-600" />
-          {PRIVACY_BADGE}: files never leave this device.
+          Your files stay on this device. They are never uploaded.
         </span>
       </div>
 
