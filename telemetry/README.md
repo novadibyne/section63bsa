@@ -31,14 +31,16 @@ visitor's IP and location; without it, Elastic only sees Cloudflare's address.
 
 - In the Cloudflare dashboard: **Workers & Pages** → **legalsakshya-telemetry** → **Edit code**. Replace everything
   with the contents of [`worker/worker.js`](worker/worker.js), then click **Deploy**. Or:
-- From a computer: `cd telemetry/worker && npx wrangler deploy`.
+- From a computer: `cd telemetry/worker && npx wrangler deploy`. This keeps the settings made in the dashboard.
 
-**Its two settings** (Workers & Pages → legalsakshya-telemetry → **Settings** → **Variables and Secrets**):
+**Its two settings** (Workers & Pages → legalsakshya-telemetry → **Settings** → **Variables and Secrets** → **Add**,
+then **Deploy**). Use the runtime *Variables and Secrets* section, not *Build* → *Variables and secrets*; the worker
+can't see build variables. The names must be exactly these:
 
 | Name | Type | Value |
 |---|---|---|
-| `ELASTIC_OTLP_ENDPOINT` | Text | Your deployment's **Managed OTLP endpoint**, e.g. `https://….ingest.….elastic.cloud`. Origin only: no path. |
-| `ELASTIC_API_KEY` | Secret | The whole header value: `ApiKey ` followed by the key's **encoded** value. |
+| `ELASTIC_OTLP_ENDPOINT` | Text or Secret | Your deployment's **Managed OTLP endpoint**, e.g. `https://….ingest.….elastic.cloud`. |
+| `ELASTIC_API_KEY` | Secret | The key's **encoded** value, with or without `ApiKey ` in front. |
 
 To create the API key, open Kibana → **Dev Tools** and run:
 
@@ -59,14 +61,28 @@ Copy `encoded` from the response. The secret is `ApiKey ` plus that value.
 **Optional rate limit:** uncomment the `[[ratelimits]]` lines in [`worker/wrangler.toml`](worker/wrangler.toml)
 (120 requests a minute per IP) and deploy with wrangler.
 
-**Check it** from a Mac or Linux terminal. You should see `204`:
+**Check it** by opening <https://legalsakshya-telemetry.novadibyne.workers.dev/status> in a browser. It shows the
+settings the worker can see (names only, never values) and sends Elastic an empty test. `"ok": true` means it works.
+
+| The status page says | Fix |
+|---|---|
+| `ELASTIC_OTLP_ENDPOINT is not set` or `ELASTIC_API_KEY is not set` | The setting is missing, misnamed (see `settings_found`) or under *Build* variables. Add it as above and click **Deploy**. |
+| `not a valid https:// address` | Paste the Managed OTLP endpoint as shown in Elastic, starting `https://`. |
+| `Elastic refused the API key (401)` | Paste the key's **encoded** value again, or create a new key. |
+| `may not send data (403)` | Create the key with the `event:write` privilege shown above. |
+| `Nothing at …/v1/logs (404)` or `redirects` | That is the Elasticsearch or Kibana address. Use the **Managed OTLP endpoint**. |
+
+When the website's requests fail, the worker also writes the reason to its logs (Workers & Pages →
+legalsakshya-telemetry → **Logs**). Each failed request shows `503` (a setting is missing) or `502` (Elastic refused it).
+
+Or check from a Mac or Linux terminal. You should see `204`:
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" -X POST https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs -H "Origin: https://legalsakshya.com" -H "Content-Type: application/json" --data '{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"legal-sakshya"}},{"key":"data_stream.dataset","value":{"stringValue":"legal_sakshya"}}]},"scopeLogs":[{"logRecords":[{"body":{"stringValue":"setup_check"},"attributes":[{"key":"event.name","value":{"stringValue":"setup_check"}}]}]}]}]}'
 ```
 
-`403` means the Origin isn't allowed, `503` means a setting is missing, and `502` means Elastic refused it. Check
-the endpoint and API key.
+`403` means the Origin isn't allowed, `503` means a setting is missing, and `502` means Elastic refused it. The
+status page and the worker's logs say why.
 
 ## 2. The website
 

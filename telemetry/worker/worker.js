@@ -6,8 +6,9 @@
 //
 // Settings (Workers → legalsakshya-telemetry → Settings → Variables and Secrets):
 //   ELASTIC_OTLP_ENDPOINT  the Managed OTLP endpoint, e.g. https://<project>.ingest.<region>.<provider>.elastic.cloud
-//   ELASTIC_API_KEY        secret, the whole Authorization header value: "ApiKey <encoded key>"
+//   ELASTIC_API_KEY        secret, the API key: "ApiKey <encoded key>" (the encoded key alone also works)
 //   TELEMETRY_LIMITER      optional rate-limit binding (see wrangler.toml)
+// Open https://<worker address>/status to check the settings and the connection to Elastic.
 // Deploying and testing: telemetry/README.md.
 
 const ALLOWED_ORIGINS = new Set([
@@ -24,6 +25,109 @@ const ALLOWED_PATHS = new Set([
 const MAX_BODY_BYTES = 65536; // 64 KiB
 
 const RESOURCE_LISTS = ["resourceLogs", "resourceSpans", "resourceMetrics"];
+
+const SETTINGS_HELP = "Set it in Workers & Pages → legalsakshya-telemetry → Settings → Variables and Secrets, then deploy.";
+
+/**
+ * Reads the two Elastic settings, accepting the usual ways of pasting them: with quotes or spaces, as the
+ * OTEL_EXPORTER_OTLP_ENDPOINT / OTEL_EXPORTER_OTLP_HEADERS lines Elastic shows, the endpoint with a path or without
+ * https://, and the key with or without "ApiKey " or in the "id:api_key" form.
+ * Returns { endpoint, authorization, problems }: problems lists what is missing or wrong.
+ */
+export function readSettings(env) {
+  const clean = (value, name) => typeof value !== "string" ? "" : value
+    .trim()
+    .replace(new RegExp(`^${name}\\s*=\\s*`, "i"), "")
+    .replace(/^["']+|["']+$/g, "")
+    .trim();
+  const problems = [];
+
+  let endpoint = clean(env.ELASTIC_OTLP_ENDPOINT, "OTEL_EXPORTER_OTLP_ENDPOINT");
+  if (!endpoint) {
+    problems.push("ELASTIC_OTLP_ENDPOINT is not set");
+  } else {
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(endpoint)) endpoint = `https://${endpoint}`;
+    let target = null;
+    try {
+      target = new URL(endpoint);
+    } catch {
+      // reported below
+    }
+    if (!target || target.protocol !== "https:" ||
+        target.username || target.password ||
+        !target.hostname.includes(".")) {
+      problems.push("ELASTIC_OTLP_ENDPOINT is not a valid https:// address");
+      endpoint = "";
+    } else {
+      // Only the address is used: a path pasted with it, such as /v1/logs, is ignored.
+      endpoint = target.origin;
+    }
+  }
+
+  let key = clean(env.ELASTIC_API_KEY, "OTEL_EXPORTER_OTLP_HEADERS")
+    .replace(/^Authorization\s*[:=]\s*/i, "")
+    .replace(/^ApiKey(\s+|%20)/i, "")
+    .replace(/\s+/g, "");
+  let authorization = "";
+  if (!key) {
+    problems.push("ELASTIC_API_KEY is not set");
+  } else {
+    // "id:api_key" is the same key before encoding.
+    if (key.includes(":")) key = btoa(key);
+    authorization = `ApiKey ${key}`;
+  }
+
+  return { endpoint, authorization, problems };
+}
+
+/** What Elastic's answer to a test send means, in plain words. */
+function explainElastic(status, endpoint) {
+  if (status >= 200 && status < 300) return "ok: Elastic accepted the API key";
+  if (status === 401) return "Elastic refused the API key (401). Check ELASTIC_API_KEY: it must be the key's encoded value.";
+  if (status === 403) return "The API key may not send data (403). Create it with the apm event:write privilege (telemetry/README.md).";
+  if (status === 404) return `Nothing at ${endpoint}/v1/logs (404). ELASTIC_OTLP_ENDPOINT must be the Managed OTLP endpoint, not the Elasticsearch or Kibana address.`;
+  if (status >= 300 && status < 400) return `${endpoint} redirects (${status}). ELASTIC_OTLP_ENDPOINT must be the Managed OTLP endpoint.`;
+  return `Elastic answered ${status}.`;
+}
+
+/** GET /status: which settings the worker sees and whether Elastic accepts them. Never shows their values. */
+async function statusReport(env) {
+  const { endpoint, authorization, problems } = readSettings(env);
+  const report = {
+    ok: false,
+    settings_found: Object.keys(env).sort(),
+    ELASTIC_OTLP_ENDPOINT: problems.find((p) => p.startsWith("ELASTIC_OTLP_ENDPOINT")) || `ok: ${endpoint}`,
+    ELASTIC_API_KEY: problems.find((p) => p.startsWith("ELASTIC_API_KEY")) || "ok: set",
+    elastic: problems.length ? `not tried: ${SETTINGS_HELP}` : ""
+  };
+
+  if (!problems.length) {
+    try {
+      const res = await fetch(endpoint + "/v1/logs", {
+        method: "POST",
+        headers: {
+          "Authorization": authorization,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ resourceLogs: [] }),
+        redirect: "manual"
+      });
+      report.elastic = explainElastic(res.status, endpoint);
+      report.ok = res.ok;
+    } catch {
+      report.elastic = `Could not reach ${endpoint}. Check ELASTIC_OTLP_ENDPOINT.`;
+    }
+  }
+
+  return new Response(JSON.stringify(report, null, 2), {
+    status: report.ok ? 200 : 503,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store"
+    }
+  });
+}
 
 /**
  * Adds who sent the data, from Cloudflare's view of the request, to every resource in an OTLP/JSON body:
@@ -79,6 +183,11 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
     const url = new URL(request.url);
+
+    // A page for checking the setup in a browser.
+    if (url.pathname === "/status" && request.method === "GET") {
+      return statusReport(env);
+    }
 
     if (!origin || !ALLOWED_ORIGINS.has(origin)) {
       return new Response("Forbidden", { status: 403 });
@@ -162,23 +271,11 @@ export default {
       }
     }
 
-    if (!env.ELASTIC_OTLP_ENDPOINT ||
-        !env.ELASTIC_API_KEY) {
-      return new Response("Proxy not configured", {
-        status: 503,
-        headers: cors
-      });
-    }
-
-    const endpoint = env.ELASTIC_OTLP_ENDPOINT
-      .replace(/\/+$/, "");
-
-    const target = new URL(endpoint);
-    if (target.protocol !== "https:" ||
-        target.username || target.password ||
-        target.search || target.hash ||
-        (target.pathname !== "/" && target.pathname !== "")) {
-      return new Response("Invalid upstream config", {
+    const settings = readSettings(env);
+    if (settings.problems.length) {
+      // Shows in Cloudflare's logs for the worker. Names only, never values.
+      console.error(`Proxy not configured: ${settings.problems.join("; ")}. ${SETTINGS_HELP}`);
+      return new Response(`Proxy not configured: ${settings.problems.join("; ")}`, {
         status: 503,
         headers: cors
       });
@@ -199,11 +296,11 @@ export default {
 
     try {
       const upstream = await fetch(
-        target.origin + url.pathname,
+        settings.endpoint + url.pathname,
         {
           method: "POST",
           headers: {
-            "Authorization": env.ELASTIC_API_KEY,
+            "Authorization": settings.authorization,
             "Content-Type": type,
             "Accept": "application/json"
           },
@@ -214,14 +311,17 @@ export default {
 
       if (upstream.status >= 300 &&
           upstream.status < 400) {
+        console.error(`Elastic: ${explainElastic(upstream.status, settings.endpoint)}`);
         return new Response("Upstream redirect rejected", {
           status: 502,
           headers: cors
         });
       }
 
-      // Keep upstream error details private.
+      // Keep upstream error details private: they go to the worker's logs only.
       if (!upstream.ok) {
+        const detail = (await upstream.text().catch(() => "")).slice(0, 500);
+        console.error(`Elastic: ${explainElastic(upstream.status, settings.endpoint)} ${detail}`.trim());
         return new Response("Telemetry rejected", {
           status: 502,
           headers: cors
@@ -233,6 +333,7 @@ export default {
         headers: cors
       });
     } catch (error) {
+      console.error(`Could not reach ${settings.endpoint}: ${error}`);
       return new Response("Upstream unavailable", {
         status: 502,
         headers: cors

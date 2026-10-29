@@ -6,6 +6,8 @@ name = "legalsakshya-telemetry"
 main = "worker.js"
 compatibility_date = "2025-09-01"
 workers_dev = true
+# Keep the settings made in the Cloudflare dashboard when deploying from here.
+keep_vars = true
 
 # Optional: at most 120 requests a minute per visitor IP. Remove the leading "# " on the five lines below to turn it on.
 # [[ratelimits]]
