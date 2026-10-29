@@ -1,6 +1,7 @@
 import { GraduationCap, Scale } from 'lucide-react';
 import Link from 'next/link';
 import { AFFILIATION, AFFILIATION_NOTE, APP_NAME, BARE_ACT_URL } from '@/lib/config';
+import { ContactEmail } from '@/components/contact';
 
 export function SiteFooter() {
   return (
@@ -14,16 +15,22 @@ export function SiteFooter() {
             text against the official Bharatiya Sakshya Adhiniyam, 2023 and take legal advice before relying on any certificate.
           </p>
         </div>
-        <div className="flex flex-wrap items-start gap-x-5 gap-y-2 md:justify-end">
-          <Link href="/privacy/" className="hover:text-ink-900">
-            Privacy
-          </Link>
-          <Link href="/audit/" className="hover:text-ink-900">
-            Activity log
-          </Link>
-          <a href={BARE_ACT_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
-            BSA 2023 bare Act
-          </a>
+        <div className="flex flex-col gap-4 md:items-end">
+          <div className="flex flex-col gap-1 md:items-end" data-testid="footer-contact">
+            <span className="text-[12px] font-semibold tracking-wide text-ink-700 uppercase">Contact us</span>
+            <ContactEmail className="text-[14px]" />
+          </div>
+          <div className="flex flex-wrap items-start gap-x-5 gap-y-2 md:justify-end">
+            <Link href="/privacy/" className="hover:text-ink-900">
+              Privacy
+            </Link>
+            <Link href="/audit/" className="hover:text-ink-900">
+              Activity log
+            </Link>
+            <a href={BARE_ACT_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
+              BSA 2023 bare Act
+            </a>
+          </div>
         </div>
       </div>
       <div className="border-t border-line bg-ink-50/60">

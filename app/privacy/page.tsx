@@ -2,6 +2,7 @@ import { Ban, BarChart3, Camera, Cpu, FileLock2, HardDrive, Plane, ServerOff, Sh
 import { APP_NAME, PRIVACY_BADGE, PRIVACY_LINE, STATS_RETENTION_DAYS, TELEMETRY_URL } from '@/lib/config';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { OfflineStatus } from '@/components/offline';
+import { ContactCard } from '@/components/contact';
 
 export const metadata = { title: 'Privacy' };
 
@@ -92,6 +93,12 @@ export default function PrivacyPage() {
           </ul>
         </CardBody>
       </Card>
+
+      <ContactCard
+        className="mt-6"
+        title="Questions about your data?"
+        text={STATS_ON ? 'Email us about privacy or the usage statistics.' : 'Email us about privacy.'}
+      />
     </div>
   );
 }

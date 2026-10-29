@@ -142,3 +142,7 @@ Steps for AWS Amplify and for S3 + CloudFront are in [Section 4 of the specifica
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): development rules
 - [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md): open-source licences
 - [`telemetry/README.md`](telemetry/README.md): usage statistics with Elastic and Kibana
+
+## Contact
+
+Questions, feedback or privacy requests: [legalsakshya.bsa@gmail.com](mailto:legalsakshya.bsa@gmail.com). The app shows this address in the footer of every page, at the end of Home, on the Privacy page and in Settings › About (`CONTACT_EMAIL` in `lib/config.ts`).

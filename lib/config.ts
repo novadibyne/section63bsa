@@ -23,6 +23,9 @@ export const TELEMETRY_SERVICE_NAME = 'legal-sakshya';
 /** How long Elastic keeps usage statistics; shown on the Privacy page and set by telemetry/setup-retention.mjs. */
 export const STATS_RETENTION_DAYS = 365;
 
+/** Where people write with questions, feedback or privacy requests. Shown in the footer and on Home, Privacy and Settings. */
+export const CONTACT_EMAIL = 'legalsakshya.bsa@gmail.com';
+
 /** Academic context shown in the footer and Settings › About. */
 export const AFFILIATION = 'Government Law College, Thiruvananthapuram';
 export const AFFILIATION_NOTE = 'Developed as part of a research paper at';

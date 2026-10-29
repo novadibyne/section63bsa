@@ -10,6 +10,7 @@ import { db } from '@/lib/db';
 import { clearAllData, getProfileDefaults, saveProfileDefaults, storageEstimate } from '@/lib/actions';
 import { importBundle } from '@/lib/bundle/bundle';
 import { AFFILIATION, APP_NAME, HASH_WASM_VERSION, SITE_DOMAIN } from '@/lib/config';
+import { ContactEmail } from '@/components/contact';
 import { SCHEDULE_VERSION } from '@/lib/legal/schedule-63';
 import type { ProfileDefaults } from '@/lib/types';
 import { formatBytes } from '@/lib/utils';
@@ -175,13 +176,16 @@ export default function SettingsPage() {
           <CardHeader icon={<Info />} title="About" />
           <CardBody>
             <dl className="grid gap-2 text-[13px] sm:grid-cols-2">
-              {[
-                ['App', APP_NAME],
-                ['Website', SITE_DOMAIN],
-                ['Research', AFFILIATION],
-                ['Schedule text', SCHEDULE_VERSION],
-                ['Hash library', `hash-wasm ${HASH_WASM_VERSION}`],
-              ].map(([k, v]) => (
+              {(
+                [
+                  ['App', APP_NAME],
+                  ['Website', SITE_DOMAIN],
+                  ['Contact', <ContactEmail icon={false} />],
+                  ['Research', AFFILIATION],
+                  ['Schedule text', SCHEDULE_VERSION],
+                  ['Hash library', `hash-wasm ${HASH_WASM_VERSION}`],
+                ] as [string, React.ReactNode][]
+              ).map(([k, v]) => (
                 <div key={k} className="flex min-w-0 gap-3">
                   <dt className="w-28 shrink-0 text-ink-500">{k}</dt>
                   <dd className="min-w-0 font-medium break-words text-ink-900">{v}</dd>

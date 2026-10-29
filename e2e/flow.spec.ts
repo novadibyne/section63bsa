@@ -37,6 +37,9 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
 
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Section 63 certificate');
+  // The contact email: a box at the end of Home, and the footer of every page.
+  await expect(page.locator('#contact').getByTestId('contact-email')).toHaveAttribute('href', /^mailto:legalsakshya\.bsa@gmail\.com\?/);
+  await expect(page.getByTestId('footer-contact')).toContainText('legalsakshya.bsa@gmail.com');
   await snap('01-dashboard');
 
   await page.getByTestId('start').click();
@@ -134,6 +137,7 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
 
   // Offline: once the app has loaded, it works with no network at all.
   await page.goto('./privacy/');
+  await expect(page.getByText('Questions about your data?')).toBeVisible();
   await expect(page.getByTestId('offline-status')).toContainText('Ready to work offline', { timeout: 30_000 });
   await page.context().setOffline(true);
   await page.reload();

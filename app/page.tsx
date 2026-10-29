@@ -12,6 +12,7 @@ import { ButtonLink } from '@/components/ui/button';
 import { KindIcon, StatusBadge } from '@/components/evidence/kind';
 import { HeroVisual } from '@/components/hero-visual';
 import { InstallApp } from '@/components/install-app';
+import { ContactCard } from '@/components/contact';
 
 const NEXT: Record<EvidenceStatus, { label: string; step?: number }> = {
   draft: { label: 'Add files', step: 1 },
@@ -141,6 +142,10 @@ export default function Home() {
               </li>
             ))}
           </ol>
+        </section>
+
+        <section id="contact" className="pt-10">
+          <ContactCard />
         </section>
       </div>
     </div>
