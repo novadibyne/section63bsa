@@ -19,7 +19,8 @@ Website (browser) ──OTLP/JSON logs──▶ Cloudflare Worker ──▶ Elas
   `https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs`. The address is set in `lib/config.ts`.
 - **The worker** ([`worker/worker.js`](worker/worker.js)) only accepts requests from legalsakshya.com and caps their
   size. It adds the visitor's IP address and location, which Cloudflare knows and Elastic would otherwise never see,
-  and forwards everything to Elastic with the API key. The key never reaches the browser.
+  converts the logs to OTLP protobuf (the encoding Elastic reads) and forwards them to Elastic with the API key. The
+  key never reaches the browser.
 - **Elastic** stores the events in their own data stream, `logs-legal_sakshya.otel-default`.
 
 ---
@@ -70,6 +71,7 @@ settings the worker can see (names only, never values) and sends Elastic an empt
 | `not a valid https:// address` | Paste the Managed OTLP endpoint as shown in Elastic, starting `https://`. |
 | `Elastic refused the API key (401)` | Paste the key's **encoded** value again, or create a new key. |
 | `may not send data (403)` | Create the key with the `event:write` privilege shown above. |
+| `couldn't read the data (400 or 415)` | Make sure Cloudflare is running the latest `worker/worker.js` (it sends protobuf). |
 | `Nothing at …/v1/logs (404)` or `redirects` | That is the Elasticsearch or Kibana address. Use the **Managed OTLP endpoint**. |
 
 When the website's requests fail, the worker also writes the reason to its logs (Workers & Pages →

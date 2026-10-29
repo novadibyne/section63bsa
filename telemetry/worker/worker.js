@@ -80,11 +80,141 @@ export function readSettings(env) {
   return { endpoint, authorization, problems };
 }
 
+// OTLP/JSON → OTLP/protobuf for logs. Elastic reads OTLP as protobuf, so the website's JSON logs are converted here
+// (after the visitor's details are added). Field numbers are from opentelemetry-proto: collector/logs/v1,
+// logs/v1, resource/v1 and common/v1.
+
+const utf8 = new TextEncoder();
+
+function varint(value) {
+  let v = BigInt.asUintN(64, BigInt(value));
+  const out = [];
+  while (v > 0x7fn) {
+    out.push(Number(v & 0x7fn) | 0x80);
+    v >>= 7n;
+  }
+  out.push(Number(v));
+  return out;
+}
+
+const pb = {
+  tag: (field, wire) => varint(field * 8 + wire),
+  // Length-delimited: strings, bytes and nested messages.
+  bytes: (field, data) => [...pb.tag(field, 2), ...varint(data.length), ...data],
+  string: (field, text) => typeof text === "string" && text !== "" ? pb.bytes(field, utf8.encode(text)) : [],
+  message: (field, data) => data === null ? [] : pb.bytes(field, data),
+  uint: (field, n) => Number.isInteger(n) && n > 0 ? [...pb.tag(field, 0), ...varint(n)] : [],
+  fixed64(field, value) {
+    if (value === undefined || value === null || value === "" || !/^\d+$/.test(String(value))) return [];
+    const out = new Uint8Array(8);
+    new DataView(out.buffer).setBigUint64(0, BigInt(value), true);
+    return [...pb.tag(field, 1), ...out];
+  },
+  fixed32(field, n) {
+    if (!Number.isInteger(n) || n === 0) return [];
+    const out = new Uint8Array(4);
+    new DataView(out.buffer).setUint32(0, n >>> 0, true);
+    return [...pb.tag(field, 5), ...out];
+  },
+  // OTLP/JSON writes trace and span IDs in hex.
+  hex: (field, text) => typeof text === "string" && /^([0-9a-f]{2})+$/i.test(text)
+    ? pb.bytes(field, text.match(/../g).map((h) => parseInt(h, 16)))
+    : []
+};
+
+const asArray = (value) => Array.isArray(value) ? value : [];
+const isObject = (value) => value !== null && typeof value === "object";
+
+function anyValue(v) {
+  if (!isObject(v)) return null;
+  if (typeof v.stringValue === "string") return pb.bytes(1, utf8.encode(v.stringValue));
+  if (typeof v.boolValue === "boolean") return [...pb.tag(2, 0), v.boolValue ? 1 : 0];
+  if (v.intValue !== undefined && /^-?\d+$/.test(String(v.intValue))) return [...pb.tag(3, 0), ...varint(v.intValue)];
+  if (typeof v.doubleValue === "number") {
+    const out = new Uint8Array(8);
+    new DataView(out.buffer).setFloat64(0, v.doubleValue, true);
+    return [...pb.tag(4, 1), ...out];
+  }
+  if (isObject(v.arrayValue)) {
+    return pb.bytes(5, asArray(v.arrayValue.values).flatMap((x) => pb.message(1, anyValue(x) ?? [])));
+  }
+  if (isObject(v.kvlistValue)) {
+    return pb.bytes(6, asArray(v.kvlistValue.values).flatMap((kv) => pb.message(1, keyValue(kv))));
+  }
+  if (typeof v.bytesValue === "string") {
+    return pb.bytes(7, Uint8Array.from(atob(v.bytesValue), (c) => c.charCodeAt(0)));
+  }
+  return [];
+}
+
+function keyValue(kv) {
+  if (!isObject(kv) || typeof kv.key !== "string") return null;
+  const value = anyValue(kv.value);
+  return [...pb.string(1, kv.key), ...(value === null ? [] : pb.message(2, value))];
+}
+
+const attributes = (field, items) => asArray(items).flatMap((kv) => pb.message(field, keyValue(kv)));
+
+function logRecord(r) {
+  if (!isObject(r)) return null;
+  const body = anyValue(r.body);
+  return [
+    ...pb.fixed64(1, r.timeUnixNano),
+    ...pb.uint(2, r.severityNumber),
+    ...pb.string(3, r.severityText),
+    ...(body === null ? [] : pb.message(5, body)),
+    ...attributes(6, r.attributes),
+    ...pb.uint(7, r.droppedAttributesCount),
+    ...pb.fixed32(8, r.flags),
+    ...pb.hex(9, r.traceId),
+    ...pb.hex(10, r.spanId),
+    ...pb.fixed64(11, r.observedTimeUnixNano),
+    ...pb.string(12, r.eventName)
+  ];
+}
+
+function scopeLogs(s) {
+  if (!isObject(s)) return null;
+  const scope = isObject(s.scope)
+    ? [...pb.string(1, s.scope.name), ...pb.string(2, s.scope.version), ...attributes(3, s.scope.attributes), ...pb.uint(4, s.scope.droppedAttributesCount)]
+    : null;
+  return [
+    ...(scope === null ? [] : pb.message(1, scope)),
+    ...asArray(s.logRecords).flatMap((r) => pb.message(2, logRecord(r))),
+    ...pb.string(3, s.schemaUrl)
+  ];
+}
+
+function resourceLogs(rl) {
+  if (!isObject(rl)) return null;
+  const resource = isObject(rl.resource)
+    ? [...attributes(1, rl.resource.attributes), ...pb.uint(2, rl.resource.droppedAttributesCount)]
+    : null;
+  return [
+    ...(resource === null ? [] : pb.message(1, resource)),
+    ...asArray(rl.scopeLogs).flatMap((s) => pb.message(2, scopeLogs(s))),
+    ...pb.string(3, rl.schemaUrl)
+  ];
+}
+
+/** Encodes an OTLP/JSON logs request (text) as OTLP/protobuf. Returns null when it isn't a JSON object. */
+export function logsJsonToProtobuf(text) {
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isObject(payload)) return null;
+  return Uint8Array.from(asArray(payload.resourceLogs).flatMap((rl) => pb.message(1, resourceLogs(rl))));
+}
+
 /** What Elastic's answer to a test send means, in plain words. */
 function explainElastic(status, endpoint) {
   if (status >= 200 && status < 300) return "ok: Elastic accepted the API key";
   if (status === 401) return "Elastic refused the API key (401). Check ELASTIC_API_KEY: it must be the key's encoded value.";
   if (status === 403) return "The API key may not send data (403). Create it with the apm event:write privilege (telemetry/README.md).";
+  if (status === 400 || status === 415) return `Elastic couldn't read the data (${status}).`;
   if (status === 404) return `Nothing at ${endpoint}/v1/logs (404). ELASTIC_OTLP_ENDPOINT must be the Managed OTLP endpoint, not the Elasticsearch or Kibana address.`;
   if (status >= 300 && status < 400) return `${endpoint} redirects (${status}). ELASTIC_OTLP_ENDPOINT must be the Managed OTLP endpoint.`;
   return `Elastic answered ${status}.`;
@@ -107,10 +237,12 @@ async function statusReport(env) {
         method: "POST",
         headers: {
           "Authorization": authorization,
-          "Content-Type": "application/json",
-          "Accept": "application/json"
+          "Content-Type": "application/x-protobuf"
         },
-        body: JSON.stringify({ resourceLogs: [] }),
+        // A test with no log records: nothing is stored.
+        body: logsJsonToProtobuf(JSON.stringify({
+          resourceLogs: [{ resource: { attributes: [{ key: "service.name", value: { stringValue: "legal-sakshya-status-check" } }] } }]
+        })),
         redirect: "manual"
       });
       report.elastic = explainElastic(res.status, endpoint);
@@ -149,6 +281,9 @@ export function addVisitorDetails(text, request) {
   const num = (key, value) => (Number.isFinite(Number(value)) && value !== undefined && value !== null && value !== ""
     ? [{ key, value: { doubleValue: Number(value) } }]
     : []);
+  const int = (key, value) => (Number.isSafeInteger(Number(value)) && value !== null && value !== ""
+    ? [{ key, value: { intValue: String(Number(value)) } }]
+    : []);
   const visitor = [
     ...str("client.address", request.headers.get("CF-Connecting-IP")),
     ...str("client.geo.country_iso_code", cf.country),
@@ -160,7 +295,7 @@ export function addVisitorDetails(text, request) {
     ...str("client.geo.timezone", cf.timezone),
     ...num("client.geo.location.lat", cf.latitude),
     ...num("client.geo.location.lon", cf.longitude),
-    ...num("client.as.number", cf.asn),
+    ...int("client.as.number", cf.asn),
     ...str("client.as.organization.name", cf.asOrganization)
   ];
 
@@ -223,7 +358,7 @@ export default {
       });
     }
 
-    const type = request.headers
+    let type = request.headers
       .get("Content-Type")?.split(";")[0]
       .trim().toLowerCase();
 
@@ -292,6 +427,16 @@ export default {
         });
       }
       body = enriched;
+      if (url.pathname === "/v1/logs") {
+        body = logsJsonToProtobuf(enriched);
+        type = "application/x-protobuf";
+        if (body === null) {
+          return new Response("Bad request", {
+            status: 400,
+            headers: cors
+          });
+        }
+      }
     }
 
     try {
@@ -301,8 +446,7 @@ export default {
           method: "POST",
           headers: {
             "Authorization": settings.authorization,
-            "Content-Type": type,
-            "Accept": "application/json"
+            "Content-Type": type
           },
           body,
           redirect: "manual"

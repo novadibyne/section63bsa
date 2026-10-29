@@ -2,11 +2,17 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 type Worker = { fetch: (req: Request, env: Record<string, unknown>) => Promise<Response> };
 let worker: Worker;
+let addVisitorDetails: (text: string, req: Request) => string | null;
+let logsJsonToProtobuf: (text: string) => Uint8Array | null;
 
 beforeAll(async () => {
   const path = '../telemetry/worker/worker.js';
-  worker = (await import(/* @vite-ignore */ path)).default as Worker;
+  const mod = await import(/* @vite-ignore */ path);
+  ({ addVisitorDetails, logsJsonToProtobuf } = mod);
+  worker = mod.default as Worker;
 });
+
+const hex = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex');
 
 const ENV = { ELASTIC_OTLP_ENDPOINT: 'https://otlp.example.elastic.cloud', ELASTIC_API_KEY: 'ApiKey c2VjcmV0' };
 const CF = { country: 'IN', region: 'Kerala', regionCode: 'KL', city: 'Thiruvananthapuram', latitude: '8.5241', longitude: '76.9366', asn: 24560, asOrganization: 'Bharti Airtel' };
@@ -55,17 +61,9 @@ describe('telemetry worker', () => {
     expect((await worker.fetch(post('x'.repeat(70_000)), ENV)).status).toBe(413);
   });
 
-  it('adds the visitor’s IP and location, replaces faked ones, and forwards with the API key', async () => {
-    const upstream = vi.fn(async (_url: string, _init: RequestInit) => new Response('{}', { status: 200 }));
-    vi.stubGlobal('fetch', upstream);
+  it('adds the visitor’s IP and location, replacing faked ones', () => {
     const faked = [{ key: 'client.address', value: { stringValue: '1.1.1.1' } }];
-    const res = await worker.fetch(post(otlp(faked)), ENV);
-    expect(res.status).toBe(204);
-
-    const [url, init] = upstream.mock.calls[0];
-    expect(url).toBe('https://otlp.example.elastic.cloud/v1/logs');
-    expect((init.headers as Record<string, string>).Authorization).toBe('ApiKey c2VjcmV0');
-    const sent = JSON.parse(init.body as string);
+    const sent = JSON.parse(addVisitorDetails(otlp(faked), request('/v1/logs'))!);
     const attrs = Object.fromEntries(
       sent.resourceLogs[0].resource.attributes.map((a: { key: string; value: Record<string, unknown> }) => [a.key, Object.values(a.value)[0]]),
     );
@@ -78,15 +76,77 @@ describe('telemetry worker', () => {
       'client.geo.city_name': 'Thiruvananthapuram',
       'client.geo.location.lat': 8.5241,
       'client.geo.location.lon': 76.9366,
-      'client.as.number': 24560,
+      'client.as.number': '24560',
       'client.as.organization.name': 'Bharti Airtel',
     });
+    expect(attrs).not.toHaveProperty('client.address', '1.1.1.1');
     expect(sent.resourceLogs[0].scopeLogs[0].logRecords[0].body.stringValue).toBe('pdf_generated');
+  });
+
+  it('encodes OTLP logs as protobuf exactly like the OpenTelemetry encoder', () => {
+    // Expected bytes from @opentelemetry/otlp-transformer 0.203.0 (ExportLogsServiceRequest.encode) for the same request.
+    const kv = (key: string, value: object) => ({ key, value });
+    const sample = {
+      resourceLogs: [
+        {
+          resource: { attributes: [kv('service.name', { stringValue: 'legal-sakshya' }), kv('app.installed', { boolValue: true })] },
+          scopeLogs: [
+            {
+              scope: { name: 'legal-sakshya-web', version: '1' },
+              logRecords: [
+                {
+                  timeUnixNano: '1793278488496000000',
+                  observedTimeUnixNano: '1793278488496000000',
+                  severityNumber: 17,
+                  severityText: 'ERROR',
+                  body: { stringValue: 'app_error' },
+                  traceId: '5b8efff798038103d269b633813fc60c',
+                  spanId: 'eee19b7ec3c1b174',
+                  flags: 1,
+                  eventName: 'app_error',
+                  attributes: [
+                    kv('i', { intValue: '-5' }),
+                    kv('d', { doubleValue: 9.96667 }),
+                    kv('a', { arrayValue: { values: [{ stringValue: 'x' }, { intValue: '3' }] } }),
+                    kv('k', { kvlistValue: { values: [kv('y', { boolValue: false })] } }),
+                    kv('b', { bytesValue: 'AQID' }),
+                    kv('u', { stringValue: 'ünï✓' }),
+                  ],
+                },
+              ],
+              schemaUrl: 'https://opentelemetry.io/schemas/1.26.0',
+            },
+          ],
+        },
+      ],
+    };
+    expect(hex(logsJsonToProtobuf(JSON.stringify(sample))!)).toBe(
+      '0ab6020a360a1f0a0c736572766963652e6e616d65120f0a0d6c6567616c2d73616b736879610a130a0d6170702e696e7374616c6c65641202100112fb010a160a116c6567616c2d73616b736879612d77656212013112b70109004c27ba4801e31810111a054552524f522a0b0a096170705f6572726f7232100a0169120b18fbffffffffffffffff01320e0a0164120921740cc85eefee234032100a0161120b2a090a030a01780a02180332100a016b120b32090a070a017912021000320a0a016212053a03010203320f0a0175120a0a08c3bc6ec3afe29c9345010000004a105b8efff798038103d269b633813fc60c5208eee19b7ec3c1b17459004c27ba4801e31862096170705f6572726f721a2768747470733a2f2f6f70656e74656c656d657472792e696f2f736368656d61732f312e32362e30',
+    );
+    expect(hex(logsJsonToProtobuf('{}')!)).toBe('');
+    expect(logsJsonToProtobuf('not json')).toBeNull();
+  });
+
+  it('forwards the logs to Elastic as protobuf, with the visitor’s details and the API key', async () => {
+    const upstream = vi.fn(async (_url: string, _init: RequestInit) => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', upstream);
+    const res = await worker.fetch(post(otlp()), ENV);
+    expect(res.status).toBe(204);
+
+    const [url, init] = upstream.mock.calls[0];
+    expect(url).toBe('https://otlp.example.elastic.cloud/v1/logs');
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('ApiKey c2VjcmV0');
+    expect(headers['Content-Type']).toBe('application/x-protobuf');
+    const expected = logsJsonToProtobuf(addVisitorDetails(otlp(), request('/v1/logs'))!)!;
+    expect(hex(init.body as Uint8Array)).toBe(hex(expected));
+    expect(Buffer.from(init.body as Uint8Array).toString('utf8')).toContain('203.0.113.7');
   });
 
   it('rejects JSON that isn’t JSON, and keeps Elastic’s errors private', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('index error with details', { status: 400 })));
     expect((await worker.fetch(post('{not json'), ENV)).status).toBe(400);
+    expect((await worker.fetch(post('5'), ENV)).status).toBe(400);
     const res = await worker.fetch(post(otlp()), ENV);
     expect(res.status).toBe(502);
     expect(await res.text()).toBe('Telemetry rejected');
