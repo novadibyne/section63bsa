@@ -138,6 +138,7 @@ export type AuditAction =
   | 'file.reverify'
   | 'file.acquisition_hash'
   | 'device.save'
+  | 'device.scan'
   | 'device.remove'
   | 'certificate.create'
   | 'certificate.generate'

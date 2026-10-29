@@ -193,6 +193,15 @@ export async function removeDevice(d: Device) {
   await appendAudit('device.remove', { evidenceId: d.evidenceId, details: { deviceId: d.id } });
 }
 
+/** Records that IDs were read from a photo. The photo itself is never stored. */
+export async function logDeviceScan(evidenceId: string, imeiCount: number, serialFound: boolean) {
+  const what = [imeiCount && `${imeiCount} IMEI${imeiCount === 1 ? '' : 's'}`, serialFound && 'serial number'].filter(Boolean).join(' and ');
+  await appendAudit('device.scan', {
+    evidenceId,
+    details: { imeiCount, serialFound, message: `${what || 'Nothing'} used; photo not kept` },
+  });
+}
+
 export async function logDevicesSaved(evidenceId: string) {
   const n = await db.devices.where('evidenceId').equals(evidenceId).count();
   await appendAudit('device.save', { evidenceId, details: { deviceCount: n } });
@@ -346,6 +355,13 @@ export async function downloadCertificatePdf(certId: string) {
     certificateId: certId,
     details: { version: ctx.cert.version, final: stored!.final, pdfSha256: stored!.sha256 },
   });
+}
+
+/** Downloads the PDF as it stands now: the stored final PDF, or a draft rebuilt from the latest details. */
+export async function downloadLatestPdf(certId: string) {
+  const cert = await db.certificates.get(certId);
+  if (cert && cert.status !== 'finalised') await generateDraftPdf(certId);
+  await downloadCertificatePdf(certId);
 }
 
 /* ───────────────────────── Maintenance ───────────────────────── */

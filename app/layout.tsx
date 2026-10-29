@@ -7,13 +7,15 @@ import '@fontsource-variable/source-serif-4';
 import './globals.css';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
-import { APP_NAME, APP_TAGLINE } from '@/lib/config';
+import { ServiceWorker } from '@/components/offline';
+import { APP_NAME, APP_TAGLINE, SITE_URL, assetPath } from '@/lib/config';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: { default: `${APP_NAME} · ${APP_TAGLINE}`, template: `%s · ${APP_NAME}` },
   description:
     'Hash electronic evidence and draft the Section 63(4)(c) BSA certificate (Part A, Part B and Hash Report) entirely in your browser. Files are never uploaded.',
-  icons: { icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/favicon.svg` },
+  icons: { icon: assetPath('favicon.svg') },
 };
 
 export const viewport: Viewport = { themeColor: '#0d1b3e' };
@@ -42,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
+        <ServiceWorker />
         <Toaster position="bottom-right" toastOptions={{ className: 'font-sans' }} richColors closeButton />
       </body>
     </html>

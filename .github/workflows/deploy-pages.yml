@@ -25,9 +25,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test --if-present
+      # base_path is "" once the custom domain (legalsakshya.com) is set in Settings → Pages,
+      # and "/<repo-name>" while the site is served from novadibyne.github.io/<repo-name>/.
+      - id: pages
+        uses: actions/configure-pages@v5
       - run: npm run build
         env:
-          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: out

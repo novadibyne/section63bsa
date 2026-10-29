@@ -1,5 +1,6 @@
 import { GraduationCap, Scale } from 'lucide-react';
-import { AFFILIATION, AFFILIATION_NOTE, APP_NAME, BARE_ACT_URL, REPO_URL } from '@/lib/config';
+import Link from 'next/link';
+import { AFFILIATION, AFFILIATION_NOTE, APP_NAME, BARE_ACT_URL, LICENSES_URL, REPO_URL } from '@/lib/config';
 
 export function SiteFooter() {
   return (
@@ -14,14 +15,20 @@ export function SiteFooter() {
           </p>
         </div>
         <div className="flex flex-wrap items-start gap-x-5 gap-y-2 md:justify-end">
+          <Link href="/privacy/" className="hover:text-ink-900">
+            Privacy
+          </Link>
+          <Link href="/audit/" className="hover:text-ink-900">
+            Activity log
+          </Link>
           <a href={BARE_ACT_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
             BSA 2023 bare Act
           </a>
-          <a href={`${REPO_URL}/blob/main/docs/SPECIFICATION.md`} target="_blank" rel="noreferrer" className="hover:text-ink-900">
-            Specification
-          </a>
           <a href={REPO_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
             Source code
+          </a>
+          <a href={LICENSES_URL} target="_blank" rel="noreferrer" className="hover:text-ink-900">
+            Open-source licences
           </a>
         </div>
       </div>

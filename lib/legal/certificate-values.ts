@@ -13,9 +13,15 @@ export interface CertificateContext {
 const MAX_INLINE_HASHES = 4;
 
 function identifiersText(d: Device): string {
-  return d.identifiers
-    .filter((i) => i.value.trim())
-    .map((i) => `${IDENTIFIER_LABEL[i.idType]} ${i.value.trim()}`)
+  const ids = d.identifiers.filter((i) => i.value.trim());
+  const imeiCount = ids.filter((i) => i.idType === 'imei').length;
+  let imeiNo = 0;
+  return ids
+    .map((i) => {
+      // A dual-SIM phone has two IMEIs; number them as the phone does.
+      const label = i.idType === 'imei' && imeiCount > 1 ? `IMEI ${++imeiNo}` : IDENTIFIER_LABEL[i.idType];
+      return `${label} ${i.value.trim()}`;
+    })
     .join('; ');
 }
 

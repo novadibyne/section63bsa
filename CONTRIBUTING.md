@@ -11,6 +11,9 @@ The full project specification is in [`docs/SPECIFICATION.md`](docs/SPECIFICATIO
 - **Static export limits:** no API routes, server actions, middleware or dynamic route segments. Use query strings such as `/evidence/?id=…`.
 - **Deployment:** GitHub Pages, through the workflow in Section 4.1 of the specification.
 - **Changes to the specification:** discuss them before departing from it.
+- **Dependencies:** only open-source libraries under permissive licences (MIT, Apache-2.0, ISC, BSD, OFL for fonts). After adding, removing or upgrading one, run `npm run licenses -- --check` and commit the updated `THIRD_PARTY_LICENSES.md`.
+- **No CDNs:** if a library downloads code or data at run time (a worker, WebAssembly, a model), copy those files into `public/vendor/` in `scripts/copy-scan-assets.mjs` and point the library there. The CSP blocks everything else.
+- **Photos for device IDs** are read and discarded. Never store, hash or log them.
 
 ## Before opening a pull request
 

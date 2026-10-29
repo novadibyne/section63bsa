@@ -6,6 +6,9 @@ const shots = process.env.E2E_SCREENSHOTS;
 
 for (const [name, path] of [
   ['dashboard', './'],
+  ['history', './history/'],
+  ['why', './why/'],
+  ['privacy', './privacy/'],
   ['audit', './audit/'],
   ['settings', './settings/'],
 ] as const) {

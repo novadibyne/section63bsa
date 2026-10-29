@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronDown, Download, FileArchive, MessagesSquare, RefreshCw, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react';
+import { ChevronDown, Download, FileArchive, Info, MessagesSquare, RefreshCw, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EvidenceFile } from '@/lib/types';
 import type { MetaRow } from '@/lib/evidence/metadata';
@@ -36,6 +36,19 @@ function Disclosure({ title, icon, children, defaultOpen }: { title: React.React
       </button>
       {open && <div className="border-t border-line p-3.5">{children}</div>}
     </div>
+  );
+}
+
+function MetaList({ rows }: { rows: MetaRow[] }) {
+  return (
+    <dl className="mt-1 grid grid-cols-1 gap-x-6 gap-y-1.5 rounded-xl bg-ink-50/60 px-3.5 py-3 sm:grid-cols-2">
+      {rows.map((r, i) => (
+        <div key={i} className="flex min-w-0 gap-2 text-[12.5px]">
+          <dt className="w-32 shrink-0 text-ink-500">{r.label}</dt>
+          <dd className="min-w-0 break-words font-medium text-ink-800">{r.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -148,16 +161,14 @@ export function FileCard({ file, editable = true, full = false }: { file: Eviden
       <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4 sm:px-5">
         <HashLine algo="SHA-256" value={file.sha256} emphasise />
 
-        {summary.length > 0 && (
-          <dl className="mt-1 grid grid-cols-1 gap-x-6 gap-y-1.5 rounded-xl bg-ink-50/60 px-3.5 py-3 sm:grid-cols-2">
-            {summary.map((r, i) => (
-              <div key={i} className="flex min-w-0 gap-2 text-[12.5px]">
-                <dt className="w-32 shrink-0 text-ink-500">{r.label}</dt>
-                <dd className="min-w-0 break-words font-medium text-ink-800">{r.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
+        {summary.length > 0 &&
+          (full ? (
+            <MetaList rows={summary} />
+          ) : (
+            <Disclosure title="Technical details read from the file" icon={<Info />}>
+              <MetaList rows={summary} />
+            </Disclosure>
+          ))}
 
         {chat && chat.preview.length > 0 && (
           <Disclosure title={`Preview chat (${chat.messageCount} messages)`} icon={<MessagesSquare />} defaultOpen={full}>

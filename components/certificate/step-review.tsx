@@ -163,7 +163,7 @@ export function StepReview({
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 lg:sticky lg:top-24 lg:self-start">
+      <div className="flex flex-col gap-4 lg:sticky lg:top-28 lg:self-start">
         <Card>
           <CardHeader
             icon={finalised ? <Lock /> : <Stamp />}

@@ -29,19 +29,39 @@ import { StepReview } from '@/components/certificate/step-review';
 import { PageSkeleton } from '@/components/page-skeleton';
 
 const STEPS: StepDef[] = [
-  { label: 'Evidence', hint: 'Files & hashes' },
-  { label: 'Device', hint: 'Source details' },
-  { label: 'Part A', hint: 'The party' },
-  { label: 'Part B', hint: 'The expert' },
-  { label: 'Review', hint: 'Preview & PDF' },
+  { label: 'Files', hint: 'Your evidence' },
+  { label: 'Device', hint: 'Phone or computer' },
+  { label: 'Your part', hint: 'Part A' },
+  { label: 'Expert', hint: 'Part B' },
+  { label: 'Download', hint: 'Check & get PDF' },
 ];
 
 const STEP_INTRO = [
-  { eyebrow: 'Step one', title: 'Add the evidence', text: 'Drop in the files you will produce. Each one is hashed on this device as soon as you add it.' },
-  { eyebrow: 'Step two', title: 'Describe the device', text: 'Which phone, computer, DVR or cloud account the record came from — s.63(4)(b).' },
-  { eyebrow: 'Step three', title: 'Part A — the party’s declaration', text: 'The person in charge of the device affirms the s.63(2) conditions.' },
-  { eyebrow: 'Step four', title: 'Part B — the expert’s declaration', text: 'The expert confirms the source and hash values.' },
-  { eyebrow: 'Step five', title: 'Review and generate', text: 'Check every field in the exact Schedule format, then generate the PDF.' },
+  {
+    eyebrow: 'Step 1 of 5',
+    title: 'Add the evidence files',
+    text: 'Add the photos, screenshots, recordings, chat export or documents you want to show the court. Each file gets its unique fingerprint (hash) on this device as soon as you add it.',
+  },
+  {
+    eyebrow: 'Step 2 of 5',
+    title: 'Which phone or computer is it from?',
+    text: 'Describe the device the evidence came from. You can read the IMEI and serial number from a photo instead of typing them.',
+  },
+  {
+    eyebrow: 'Step 3 of 5 · Part A',
+    title: 'Your declaration',
+    text: 'Filled in by the person who owns or looks after the device. You sign it on paper after downloading.',
+  },
+  {
+    eyebrow: 'Step 4 of 5 · Part B',
+    title: 'The expert’s declaration',
+    text: 'Filled in by a computer or cyber-forensics expert, who checks the record and its hash values and signs this part.',
+  },
+  {
+    eyebrow: 'Step 5 of 5',
+    title: 'Check and download',
+    text: 'Look over the certificate. Download a draft to check it, then finalise it to get the copy for signing. You can download it again any time from My certificates.',
+  },
 ];
 
 function Wizard() {
@@ -170,7 +190,7 @@ function Wizard() {
           </span>
           {step < 5 ? (
             <Button onClick={() => goTo(step + 1)} disabled={step === 1 && files.length === 0} data-testid="continue">
-              Continue to {STEPS[step].label} <ArrowRight />
+              Next: {STEPS[step].label} <ArrowRight />
             </Button>
           ) : (
             <ButtonLink href={`/evidence/?id=${evidence.id}`} variant="secondary">

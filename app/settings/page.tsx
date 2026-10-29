@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { DatabaseBackup, HardDrive, Info, Trash2, Upload, UserRound, UserRoundCog } from 'lucide-react';
@@ -8,7 +9,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/db';
 import { clearAllData, getProfileDefaults, saveProfileDefaults, storageEstimate } from '@/lib/actions';
 import { importBundle } from '@/lib/bundle/bundle';
-import { AFFILIATION, APP_NAME, HASH_WASM_VERSION, REPO_URL } from '@/lib/config';
+import { AFFILIATION, APP_NAME, HASH_WASM_VERSION, LICENSES_URL, REPO_URL, SITE_DOMAIN } from '@/lib/config';
 import { SCHEDULE_VERSION } from '@/lib/legal/schedule-63';
 import type { ProfileDefaults } from '@/lib/types';
 import { formatBytes } from '@/lib/utils';
@@ -175,6 +176,7 @@ export default function SettingsPage() {
             <dl className="grid gap-2 text-[13px] sm:grid-cols-2">
               {[
                 ['App', APP_NAME],
+                ['Website', SITE_DOMAIN],
                 ['Research', AFFILIATION],
                 ['Schedule text', SCHEDULE_VERSION],
                 ['Hash library', `hash-wasm ${HASH_WASM_VERSION}`],
@@ -186,6 +188,17 @@ export default function SettingsPage() {
                 </div>
               ))}
             </dl>
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-4 text-[13px] font-medium">
+              <Link href="/audit/" className="text-brand-700 hover:underline">
+                Activity log (audit trail)
+              </Link>
+              <Link href="/privacy/" className="text-brand-700 hover:underline">
+                Privacy
+              </Link>
+              <a href={LICENSES_URL} target="_blank" rel="noreferrer" className="text-brand-700 hover:underline">
+                Open-source licences
+              </a>
+            </div>
           </CardBody>
         </Card>
       </div>

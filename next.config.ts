@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
   reactStrictMode: true,
+  // `npm run licenses` builds with source maps to see exactly which packages end up in the browser bundle.
+  productionBrowserSourceMaps: process.env.LICENSE_SCAN === '1',
   env: {
     NEXT_PUBLIC_HASH_WASM_VERSION: hashWasmVersion,
   },

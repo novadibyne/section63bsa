@@ -6,13 +6,14 @@ import type { Device, DeviceCategory, EvidenceFile, IdentifierType } from '@/lib
 import { blankDevice, removeDevice, saveDevice } from '@/lib/actions';
 import { useAutosave } from '@/lib/hooks';
 import { DEVICE_SOURCE_OPTIONS } from '@/lib/legal/schedule-63';
-import { IDENTIFIER_LABEL, identifierError } from '@/lib/legal/validators';
+import { IDENTIFIER_LABEL, digitsOnly, identifierError } from '@/lib/legal/validators';
 import { metadataSentence, type MetaRow } from '@/lib/evidence/metadata';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { CheckChip, Field, Input, Select, Textarea } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/misc';
 import { useConfirm } from '@/components/ui/dialog';
+import { ScanIdsButton } from './scan-ids';
 
 function suggestCategories(files: EvidenceFile[]): DeviceCategory[] {
   const set = new Set<DeviceCategory>();
@@ -58,6 +59,17 @@ function DeviceEditor({
     setD((x) => ({ ...x, categories: on ? [...x.categories, k] : x.categories.filter((c) => c !== k) }));
   const setId = (i: number, patch: Partial<{ idType: IdentifierType; value: string }>) =>
     setD((x) => ({ ...x, identifiers: x.identifiers.map((id, j) => (j === i ? { ...id, ...patch } : id)) }));
+  const applyScan = ({ imeis, serial }: { imeis: string[]; serial?: string }) =>
+    setD((x) => {
+      const identifiers = [...x.identifiers];
+      for (const v of imeis) {
+        if (identifiers.some((id) => id.idType === 'imei' && digitsOnly(id.value) === v)) continue;
+        const empty = identifiers.findIndex((id) => id.idType === 'imei' && !id.value.trim());
+        if (empty >= 0) identifiers[empty] = { idType: 'imei', value: v };
+        else identifiers.push({ idType: 'imei', value: v });
+      }
+      return { ...x, identifiers, serialNumber: serial ?? x.serialNumber };
+    });
 
   return (
     <Card>
@@ -104,6 +116,16 @@ function DeviceEditor({
               />
             )}
           </div>
+
+          {!readOnly && (
+            <div className="flex flex-col gap-3 rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[13.5px] leading-snug text-brand-900">
+                <strong className="font-semibold">Have the phone or its box?</strong> Read the IMEI numbers and serial number from a photo
+                instead of typing them.
+              </p>
+              <ScanIdsButton evidenceId={d.evidenceId} onUse={applyScan} />
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Make & Model" htmlFor={`mm-${d.id}`} hint={!d.makeModel && suggestion ? undefined : 'e.g. Samsung Galaxy S23 (SM-S911B)'}>

@@ -49,6 +49,7 @@ export const ACTION_LABEL: Record<AuditAction, string> = {
   'file.reverify': 'File re-verified',
   'file.acquisition_hash': 'Acquisition hash recorded',
   'device.save': 'Device saved',
+  'device.scan': 'Device IDs read from a photo',
   'device.remove': 'Device removed',
   'certificate.create': 'Certificate version created',
   'certificate.generate': 'Draft PDF generated',

@@ -27,6 +27,11 @@ describe('certificate values', () => {
     expect([...v.boxes.algo]).toEqual(['sha256']);
     expect(v.fields.algoOther).toBeUndefined();
   });
+  it('numbers the two IMEIs of a dual-SIM phone', () => {
+    const dual = { ...device, identifiers: [{ idType: 'imei' as const, value: '490154203237518' }, { idType: 'imei' as const, value: '356938035643809' }, { idType: 'mac' as const, value: 'AA:BB:CC:DD:EE:FF' }] };
+    const v = buildPartValues('A', { evidence, files: [file(1)], devices: [dual], cert });
+    expect(v.fields.identifiers).toBe('IMEI 1 490154203237518; IMEI 2 356938035643809; MAC AA:BB:CC:DD:EE:FF');
+  });
   it('does not tick control boxes in Part B', () => {
     const v = buildPartValues('B', { evidence, files: [file(1)], devices: [device], cert });
     expect(v.boxes.control.size).toBe(0);

@@ -1,4 +1,6 @@
-# Section 63 BSA Certificate Tool
+# Legal Sakshya
+
+**https://legalsakshya.com**
 
 A web app for preparing **draft certificates for electronic evidence** under **Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 (BSA)**.
 
@@ -9,23 +11,32 @@ Users add evidence files such as photos, audio, video, documents or WhatsApp cha
 
 > Developed as part of a research paper at **Government Law College, Thiruvananthapuram**.
 
-> **Status:** Phase 1 MVP built. The app is called **Sakshya63** for now; change the name with the `NEXT_PUBLIC_APP_NAME` environment variable or in `lib/config.ts`. See [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
+> **Status:** Phase 1 MVP built, with the additions listed in [Section 3.14 of the specification](docs/SPECIFICATION.md#314-additions-after-phase-1). The name comes from `lib/config.ts` and can be overridden with the `NEXT_PUBLIC_APP_NAME` environment variable.
 
-## Privacy
+## Privacy: 100% on-device · 100% safe
 
-Phase 1 runs **entirely in your browser**. Evidence files are hashed and processed on your own device and are **never uploaded** to any server. Your data stays in your browser's storage. You can export it as a case bundle (`.zip`) for backup or to move it to another computer.
+**Nothing you add ever leaves your device.**
 
-## Features (Phase 1)
+- Evidence files are hashed, read and turned into the certificate PDF **inside your browser**. They are **never uploaded**. There is no server and no login.
+- Photos taken to read an IMEI or serial number are read on the device and then **thrown away**. They are never saved or uploaded.
+- A Content-Security-Policy (`connect-src 'self'`) makes the browser refuse to send data to any other site. The text and barcode readers are served by the site itself, not loaded from a CDN.
+- After the first visit the app **works offline**. Anyone can check this: turn on airplane mode and reload. The in-app **Privacy** page walks through it.
+- Records stay in your browser's storage. Export a case bundle (`.zip`) to back them up or move them to another computer.
+
+## Features
 
 - Add evidence of several types: images, audio, video, PDFs, WhatsApp exports and any other file
 - SHA-256 hashing (NIST FIPS 180-4), with re-verification later. SHA-1 and MD5 are not used: the Schedule's SHA1 and MD5 boxes are printed as part of the statutory form but left unticked
 - Automatic metadata extraction (EXIF, media details, PDF info, WhatsApp chat summary)
 - Device details as the Schedule asks for: category, make and model, colour, serial number, IMEI/UIN/UID/MAC/Cloud ID
-- A certificate wizard that produces a PDF with Part A, Part B and the Hash Report
+- **Read IMEI 1, IMEI 2 and the serial number from a photo** of the `*#06#` screen, the About phone page or the box label. Barcodes are read first, then the text. Every IMEI is checked with its Luhn check digit, and nothing is used until the user ticks it
+- A plain-language 5-step wizard that produces a PDF with Part A, Part B and the Hash Report
+- **My certificates**: every certificate made in the browser, with its PDF ready to download again at any time
+- **Why it matters**: a column on the home page and a page tracing the certificate from s.65B and *Anvar P.V.* through *Arjun Panditrao Khotkar* (2020) to Section 63 BSA and *Pune Bar Association* (2026)
 - A version for each submission, with court and case number
-- A hash-chained audit log of every action
+- A hash-chained audit log of every action (Settings › Activity log)
 - Export and import of case bundles
-- No login and no backend; hosted as a static site
+- Works offline; no login and no backend; hosted as a static site
 
 Login, cloud storage, expert accounts and payments are planned for later phases.
 
@@ -40,17 +51,27 @@ This tool **prepares drafts only**. It does not certify anything.
 
 ## Tech stack
 
-Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip
+Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip · tesseract.js (OCR) · zxing-wasm (barcodes)
+
+## Open-source licences
+
+Every library is open source under a permissive licence (MIT, Apache-2.0, ISC, BSD or, for fonts, the SIL Open Font License). The full list is in **[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md)**: what is shipped to the browser, the files served from `public/vendor/`, and the build-only tools. Regenerate it after changing dependencies:
+
+```bash
+npm run licenses
+```
 
 ## Development
 
 ```bash
 npm install
 npm run dev       # local development server at http://localhost:3000
-npm run test      # unit tests (hashing, statutory text, WhatsApp parser, audit chain, PDF)
+npm run test      # unit tests (hashing, statutory text, WhatsApp parser, IMEI/serial parser, audit chain, PDF)
 npm run build     # static build in ./out
 npx serve out     # preview the static build
 ```
+
+`npm run dev` and `npm run build` first copy the text and barcode readers into `public/vendor/` (`scripts/copy-scan-assets.mjs`). `npm run build` then writes the offline service worker, `out/sw.js` (`scripts/build-sw.mjs`).
 
 End-to-end browser tests run against the static build served under the GitHub Pages sub-path:
 
@@ -62,28 +83,46 @@ npx playwright install chromium   # first time only
 npm run test:e2e
 ```
 
-They walk through the whole flow, from adding a file to downloading the finalised PDF. They also check that no request leaves the site, that there are no console or Content-Security-Policy errors, and that pages don't scroll sideways at phone width.
+They walk through the whole flow: adding a file, reading both IMEIs and the serial number from a photo, filling Parts A and B, downloading the finalised PDF and downloading it again from My certificates. A second test reads the barcodes on a box label. They also check that the app works offline, that no request leaves the site, that there are no console or Content-Security-Policy errors, and that pages don't scroll sideways at phone width.
 
 ### Project layout
 
 | Path | What it holds |
 |---|---|
-| `app/` | Pages: dashboard, `evidence/new`, `evidence` (overview), `certificate` (the 5-step wizard), `audit`, `settings` |
-| `components/` | UI building blocks, the drop zone, file cards, wizard steps and the certificate preview |
+| `app/` | Pages: home, `evidence/new`, `evidence` (overview), `certificate` (the 5-step wizard), `history` (My certificates), `why`, `privacy`, `audit`, `settings` |
+| `components/` | UI building blocks, the drop zone, file cards, wizard steps, the photo scanner, the certificate preview and the Why column |
 | `lib/legal/schedule-63.ts` | The Schedule text, word for word. The PDF, the preview and a unit test all read from it |
+| `lib/legal/case-law.ts` | The plain-language history shown in the Why column |
 | `lib/evidence/` | Hashing (in a Web Worker), file-type detection and metadata readers |
+| `lib/device-scan/` | Reading IMEIs and serial numbers from a photo: barcode and OCR engines (`scan.ts`) and the parser (`parse.ts`) |
 | `lib/pdf/render.tsx` | The certificate PDF: Part A, Part B and the Hash Report annexure |
 | `lib/audit/` | The append-only, hash-chained audit log |
 | `lib/bundle/` | Case bundle export and import, with SHA-256 verification |
 | `lib/actions.ts` | Operations that combine storage, hashing and the audit log |
+| `scripts/` | Build helpers: scan engine copy, service worker, licence list |
 
 ## Deployment
 
-Every push to `main` is deployed to **GitHub Pages** by `.github/workflows/deploy-pages.yml`:
-
-**https://novadibyne.github.io/section63bsa/**
+Every push to `main` is deployed to **GitHub Pages** by `.github/workflows/deploy-pages.yml`. The workflow reads the base path from GitHub Pages itself, so the same build works at `https://novadibyne.github.io/section63bsa/` and at the custom domain.
 
 One-time setup: in the repo, go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
+
+### Custom domain: legalsakshya.com
+
+1. **At the domain registrar**, add these DNS records:
+
+   | Type | Name | Value |
+   |---|---|---|
+   | A | `@` | `185.199.108.153` |
+   | A | `@` | `185.199.109.153` |
+   | A | `@` | `185.199.110.153` |
+   | A | `@` | `185.199.111.153` |
+   | AAAA (optional) | `@` | `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153` |
+   | CNAME | `www` | `novadibyne.github.io` |
+
+2. **In GitHub**, go to the repo's **Settings → Pages → Custom domain**, enter `legalsakshya.com` and save. When the DNS check passes, tick **Enforce HTTPS**.
+3. **Run the deploy again**: **Actions → Deploy to GitHub Pages → Run workflow**. The site is then built for the domain root.
+4. Recommended: verify the domain under your GitHub account's **Settings → Pages → Add a domain**, so no one else can point it at their own Pages site.
 
 Steps for AWS Amplify and for S3 + CloudFront are in [Section 4 of the specification](docs/SPECIFICATION.md#4-hosting).
 
@@ -91,3 +130,4 @@ Steps for AWS Amplify and for S3 + CloudFront are in [Section 4 of the specifica
 
 - [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md): requirements, the Section 63 and Schedule field mapping, the statutory text, the build specification and hosting
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): development rules
+- [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md): open-source licences

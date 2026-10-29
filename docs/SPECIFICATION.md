@@ -193,7 +193,7 @@ Why browser-only for the MVP:
 4. The 63(2) declaration in Part A cannot be edited. The user must tick: *"I have read and understood this declaration and it is true to the best of my knowledge and belief."*
 5. Dates are printed as `DD/MM/YYYY`. Times are printed as `HH:MM` in 24-hour IST (`Asia/Kolkata`).
 6. Every certificate is a new immutable **version**. Finalising locks the version and stores the PDF's own SHA-256.
-7. **No file content leaves the browser.** No analytics or error-reporting SDK may receive file data. Add a Content-Security-Policy `<meta>` tag with `connect-src 'self'` so the browser itself blocks uploads. Show this notice on the home page: *"Your files are processed only in this browser and are never uploaded."*
+7. **No file content leaves the browser.** No analytics or error-reporting SDK may receive file data. Add a Content-Security-Policy `<meta>` tag with `connect-src 'self'` so the browser itself blocks uploads. Show this notice on every page: *"100% on-device · 100% safe · Nothing you add ever leaves this device."* (see 3.14).
 
 ### 3.3 Tech stack
 - **Framework:** Next.js 15 (App Router) with **`output: 'export'`** (static site), TypeScript `strict`. Static export has these limits, and the app must follow all of them:
@@ -373,8 +373,23 @@ lib/billing/    (empty placeholder, Phase 2)
 ### 3.13 Environment variables (Phase 1)
 ```
 NEXT_PUBLIC_BASE_PATH=            # "" for a custom domain or AWS root; "/<repo-name>" for GitHub Pages project sites
-NEXT_PUBLIC_APP_NAME="Section 63 Draft Certificate Tool"
+NEXT_PUBLIC_APP_NAME="Legal Sakshya"   # optional; the default is set in lib/config.ts
 ```
+
+### 3.14 Additions after Phase 1
+Agreed with the project owner in October 2026. All of them keep rule 7: nothing leaves the browser.
+
+| # | Addition | What the app does |
+|---|---|---|
+| 1 | **Read IMEIs and the serial number from a photo** | In step 2 (Device), "Scan IMEI / serial from a photo" takes a photo (camera) or an image file of the `*#06#` screen, Settings › About phone, or the box label. `zxing-wasm` reads barcodes first, then `tesseract.js` reads the text (with an inverted second pass for dark-mode screens). `lib/device-scan/parse.ts` keeps only 15-digit numbers with a valid Luhn check digit, labels them IMEI 1 / IMEI 2, and finds the serial next to a "Serial number", "S/N" or "SN" label. The user ticks what is correct and nothing is filled in until they press "Use selected". The photo is **never stored, hashed or uploaded**: it only lives in an object URL until the dialog closes. The scan is logged as `device.scan` with counts, not the photo. Two IMEIs print as "IMEI 1 … ; IMEI 2 …". The help text tells users to photograph the evidence phone with another device rather than screenshot it, so no new file is created on the evidence device. |
+| 2 | **Engines served by the site** | `scripts/copy-scan-assets.mjs` (run before `dev` and `build`) copies the tesseract worker, its LSTM WebAssembly builds, the English model and the zxing reader into `public/vendor/` (git-ignored). Both libraries are pointed there, so the CSP stays `connect-src 'self'`. They load only when a scan starts (about 6 MB the first time, then cached). |
+| 3 | **Plain language for lay users** | Steps are named Files, Device, You (Part A), Expert (Part B) and Download, with a one-line "what to do here". Technical file details are folded away in the wizard. The home page has "Four simple steps" and "Before you start, keep these handy". Statutory text in the PDF is unchanged (rule 1). |
+| 4 | **Why the certificate matters** | A column on the home page and a `/why/` page show the history in plain words: s.65B (2000), *Anvar P.V. v. P.K. Basheer* (2014), *Shafhi Mohammad* (2018), *Arjun Panditrao Khotkar v. Kailash Kushanrao Gorantyal* (2020), BSA s.63 (in force 1 July 2024) and *Pune Bar Association v. Union of India* (22 May 2026, upholding s.63(4)). The text lives in `lib/legal/case-law.ts`, is marked as summaries rather than legal advice, and should be re-checked against the judgments when the law changes. |
+| 5 | **Privacy shown everywhere** | A bar on every page reads "100% on-device · 100% safe · Nothing you add ever leaves this device" and links to `/privacy/`. That page explains how to check the claim with airplane mode, and where the data is kept. |
+| 6 | **Works offline** | `scripts/build-sw.mjs` (run after `build`) writes `out/sw.js`. It precaches pages, scripts and styles, caches fonts and the scan engines on first use, and only ever reads files from this site. Pages are fetched from the network first so updates arrive. |
+| 7 | **My certificates (history)** | `/history/` lists every certificate version in the browser, newest first, searchable by title, court or case number. "Download PDF" returns the stored final PDF unchanged; for a draft it rebuilds the draft from the latest details. |
+| 8 | **Name and domain** | The app is called **Legal Sakshya** and served at `https://legalsakshya.com`. The IndexedDB name, the case-bundle format ID and the audit lock name stay `section63bsa` so existing data and bundles keep working. |
+| 9 | **Licences** | Only open-source libraries with permissive licences may be shipped. `npm run licenses` writes `THIRD_PARTY_LICENSES.md` from the build's source maps and the dependency tree. Its `--check` flag fails on anything that isn't permissive. |
 
 ---
 
@@ -428,9 +443,11 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
              cache: npm
          - run: npm ci
          - run: npm run test --if-present
+         - id: pages
+           uses: actions/configure-pages@v5
          - run: npm run build
            env:
-             NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+             NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
          - uses: actions/upload-pages-artifact@v4
            with:
              path: out
@@ -445,11 +462,10 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
            uses: actions/deploy-pages@v4
    ```
 4. Commit and push. Watch the run in the **Actions** tab. The site goes live at `https://novadibyne.github.io/section63bsa/`.
-5. **Custom domain (optional):**
-   1. Go to **Settings → Pages → Custom domain** and enter e.g. `certify.example.in`.
-   2. At your DNS provider, add a `CNAME` record: `certify` → `novadibyne.github.io`.
-   3. Tick **Enforce HTTPS**.
-   4. In the workflow, change `NEXT_PUBLIC_BASE_PATH` to an empty string, because the site now lives at the domain root.
+5. **Custom domain (`legalsakshya.com`):**
+   1. At the registrar, add four `A` records for `@` pointing to `185.199.108.153`, `185.199.109.153`, `185.199.110.153` and `185.199.111.153`, and a `CNAME` record `www` → `novadibyne.github.io`.
+   2. Go to **Settings → Pages → Custom domain**, enter `legalsakshya.com` and save. Tick **Enforce HTTPS** when the DNS check passes.
+   3. Re-run the deploy workflow. It takes `NEXT_PUBLIC_BASE_PATH` from `actions/configure-pages`, which returns an empty base path once a custom domain is set, so no workflow edit is needed.
 6. GitHub Pages can't set custom HTTP headers, so the Content-Security-Policy goes in a `<meta>` tag in `app/layout.tsx` (rule 7 in 3.2). Start from this and loosen only what a library actually needs:
    `default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src blob:; object-src 'none'; base-uri 'self'; form-action 'none'`
 
