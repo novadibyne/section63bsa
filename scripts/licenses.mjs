@@ -38,7 +38,6 @@ const USED_FOR = {
   'date-fns-tz': 'Dates in DD/MM/YYYY and IST',
   'tesseract.js': 'Reads IMEI / serial text from a photo (OCR)',
   'zxing-wasm': 'Reads barcodes on phone box labels',
-  '@elastic/apm-rum': 'Usage statistics (Elastic APM, only when switched on)',
   '@tesseract.js-data/eng': 'English data for the text reader',
   'lucide-react': 'Icons',
   sonner: 'Notifications',

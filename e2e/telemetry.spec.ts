@@ -10,7 +10,7 @@ const fixtureSha256 = createHash('sha256').update(readFileSync(fixture)).digest(
 test('usage statistics report what happened, never the evidence', async ({ page }) => {
   const sent = await stubStats(page);
   await page.goto('./');
-  test.skip(!(await statsBuilt(page)), 'built without NEXT_PUBLIC_APM_SERVER_URL');
+  test.skip(!(await statsBuilt(page)), 'built without NEXT_PUBLIC_TELEMETRY_URL=https://telemetry.invalid');
 
   await page.goto('./evidence/new/');
   await page.getByTestId('parts-B').click();
@@ -33,16 +33,21 @@ test('usage statistics report what happened, never the evidence', async ({ page 
   await page.getByRole('dialog').getByRole('button', { name: 'Finalise' }).click();
   await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Download final PDF/ }).click()]);
 
-  // The agent sends in batches; wait for the download event to arrive.
+  // Events go out in batches; hiding the page sends what is waiting.
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect.poll(() => sent.join('\n'), { timeout: 15_000 }).toContain('pdf_downloaded');
   const all = sent.join('\n');
   if (process.env.STATS_DUMP) writeFileSync(process.env.STATS_DUMP, all);
-  for (const event of ['page-load', 'page_view', 'certificate_started', 'evidence_added', 'pdf_generated', 'pdf_downloaded']) {
-    expect(all, `reports ${event}`).toContain(event);
+
+  // Every request is OpenTelemetry logs JSON, as the worker expects.
+  const records = sent.flatMap((b) => JSON.parse(b).resourceLogs.flatMap((r: { scopeLogs: { logRecords: unknown[] }[] }) => r.scopeLogs[0].logRecords));
+  const names = records.map((r) => (r as { body: { stringValue: string } }).body.stringValue);
+  for (const event of ['page_view', 'certificate_started', 'evidence_added', 'pdf_generated', 'pdf_downloaded']) {
+    expect(names, `reports ${event}`).toContain(event);
   }
-  expect(all).toMatch(/"parts":"B"/);
-  expect(all).toMatch(/"kind":"final"/);
-  expect(all).toContain('legal-sakshya');
+  expect(all).toContain('{"key":"legal_sakshya.parts","value":{"stringValue":"B"}}');
+  expect(all).toContain('{"key":"legal_sakshya.kind","value":{"stringValue":"final"}}');
+  expect(all).toContain('{"key":"service.name","value":{"stringValue":"legal-sakshya"}}');
 
   // None of what the user typed or added may be in it.
   for (const secret of ['Ravi', 'Meera', 'Neha', 'Mehta', 'Baner', 'Samsung', '490154203237518', fixtureSha256, 'evidenceId=', 'WhatsApp chat', 'whatsapp-android']) {

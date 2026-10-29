@@ -9,7 +9,7 @@ import { SiteFooter } from '@/components/site-footer';
 import { ServiceWorker } from '@/components/offline';
 import { AppToaster } from '@/components/app-toaster';
 import { Telemetry } from '@/components/telemetry';
-import { APM_SERVER_URL, APP_NAME, APP_TAGLINE, SITE_URL, assetPath } from '@/lib/config';
+import { APP_NAME, APP_TAGLINE, SITE_URL, TELEMETRY_URL, assetPath } from '@/lib/config';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -25,8 +25,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: '#0d1b3e', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
 // connect-src means the browser itself refuses to send anything anywhere else. The only exception is the
-// Elastic APM server for usage statistics, when one is configured (lib/telemetry.ts).
-const STATS_ORIGIN = APM_SERVER_URL ? new URL(APM_SERVER_URL).origin : '';
+// usage-statistics worker, when statistics are on (lib/telemetry.ts).
+const STATS_ORIGIN = TELEMETRY_URL ? new URL(TELEMETRY_URL).origin : '';
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",

@@ -19,17 +19,17 @@ Users add evidence files such as photos, audio, video, documents or WhatsApp cha
 
 - Evidence files are hashed, read and turned into the certificate PDF **inside your browser**. They are **never uploaded**. There is no server for them and no login.
 - Photos taken to read an IMEI or serial number are read on the device and then **thrown away**. They are never saved or uploaded.
-- A Content-Security-Policy (`connect-src`) makes the browser refuse to send data to any other site. The only exception is the Elastic APM endpoint for usage statistics, when one is configured. The text and barcode readers are served by the site itself, not loaded from a CDN.
+- A Content-Security-Policy (`connect-src`) makes the browser refuse to send data to any other site. The only exception is the usage-statistics worker. The text and barcode readers are served by the site itself, not loaded from a CDN.
 - After the first visit the app **works offline**. Anyone can check this: turn on airplane mode and reload. The in-app **Privacy** page walks through it.
 - Records stay in your browser's storage. Export a case bundle (`.zip`) to back them up or move them to another computer.
 
 ### Usage statistics (optional)
 
-When the deploy sets an Elastic APM endpoint (the GitHub variable `APM_SERVER_URL`), the app reports **how it is used** to Elastic: visits, unique visitors, certificates started, PDFs made and downloaded, phone scans and installs. Elastic adds each visitor's IP address, location, browser and device. The data is kept for 365 days.
+The app reports **how it is used**: visits, unique visitors, certificates started, PDFs made and downloaded, phone scans and installs. These go as OpenTelemetry logs to a Cloudflare Worker (`telemetry/worker/`). The worker adds each visitor's IP address and location and forwards them to Elastic's Managed OTLP Endpoint, where they're kept for 365 days and viewed in Kibana.
 
 It never sends evidence, file names, hashes, names, IMEI or serial numbers, case numbers or PDF contents. The Privacy page describes the statistics whenever they are switched on.
 
-Setup, the Kibana dashboard queries and how to move to another Elastic deployment are in **[`telemetry/README.md`](telemetry/README.md)**. Without the variable, statistics are off.
+The worker, its settings, the 365-day retention setup, the Kibana dashboard queries and how to move to another Elastic deployment are in **[`telemetry/README.md`](telemetry/README.md)**. To switch statistics off, set the GitHub variable `TELEMETRY_URL` to `off`.
 
 ## Features
 
@@ -61,7 +61,7 @@ This tool **prepares drafts only**. It does not certify anything.
 
 ## Tech stack
 
-Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip · tesseract.js (OCR) · zxing-wasm (barcodes) · Elastic APM RUM agent (usage statistics)
+Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip · tesseract.js (OCR) · zxing-wasm (barcodes) · OpenTelemetry logs → Cloudflare Worker → Elastic (usage statistics)
 
 ## Open-source licences
 
@@ -83,10 +83,10 @@ npx serve out     # preview the static build
 
 `npm run dev` and `npm run build` first copy the text and barcode readers into `public/vendor/` (`scripts/copy-scan-assets.mjs`). `npm run build` then writes the offline service worker, `out/sw.js` (`scripts/build-sw.mjs`).
 
-End-to-end browser tests run against the static build served under the GitHub Pages sub-path, with usage statistics pointed at a test address (`https://apm.invalid`) that the tests answer themselves:
+End-to-end browser tests run against the static build served under the GitHub Pages sub-path, with usage statistics pointed at a test address (`https://telemetry.invalid`) that the tests answer themselves:
 
 ```bash
-NEXT_PUBLIC_APM_SERVER_URL=https://apm.invalid NEXT_PUBLIC_BASE_PATH=/section63bsa npm run build
+NEXT_PUBLIC_TELEMETRY_URL=https://telemetry.invalid NEXT_PUBLIC_BASE_PATH=/section63bsa npm run build
 mkdir -p .site && rm -rf .site/section63bsa && cp -r out .site/section63bsa
 npx serve .site -l 4173 &
 npx playwright install chromium   # first time only

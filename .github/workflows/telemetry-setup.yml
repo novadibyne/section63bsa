@@ -1,0 +1,27 @@
+name: Set up Elastic retention
+
+# Run by hand (Actions → "Set up Elastic retention" → Run workflow) once per Elastic deployment.
+# Keeps Legal Sakshya usage statistics for 365 days, then deletes them. See telemetry/README.md.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only show what would change
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  retention:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node telemetry/setup-retention.mjs ${{ inputs.dry_run && '--dry-run' || '' }}
+        env:
+          ELASTIC_URL: ${{ secrets.ELASTIC_URL }}
+          ELASTIC_API_KEY: ${{ secrets.ELASTIC_SETUP_API_KEY }}

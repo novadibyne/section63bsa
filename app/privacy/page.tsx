@@ -1,12 +1,12 @@
 import { Ban, BarChart3, Camera, Cpu, FileLock2, HardDrive, Plane, ServerOff, ShieldCheck } from 'lucide-react';
-import { APM_SERVER_URL, APP_NAME, PRIVACY_BADGE, PRIVACY_LINE, STATS_RETENTION_DAYS } from '@/lib/config';
+import { APP_NAME, PRIVACY_BADGE, PRIVACY_LINE, STATS_RETENTION_DAYS, TELEMETRY_URL } from '@/lib/config';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { OfflineStatus } from '@/components/offline';
 
 export const metadata = { title: 'Privacy' };
 
-/** Usage statistics are on when the site is built with an Elastic APM address (see lib/telemetry.ts). */
-const STATS_ON = !!APM_SERVER_URL;
+/** Usage statistics are on unless the site is built with NEXT_PUBLIC_TELEMETRY_URL=off (see lib/telemetry.ts). */
+const STATS_ON = !!TELEMETRY_URL;
 
 const PROMISES = [
   { icon: Cpu, title: 'Everything happens on this device', text: 'Files are fingerprinted (hashed), read and turned into the certificate PDF inside this browser.' },

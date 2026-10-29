@@ -1,0 +1,16 @@
+# Cloudflare Worker for Legal Sakshya usage statistics. Deploy from this folder with: npx wrangler deploy
+# Then set the two settings (see telemetry/README.md):
+#   npx wrangler secret put ELASTIC_API_KEY          # paste: ApiKey <encoded key>
+#   npx wrangler secret put ELASTIC_OTLP_ENDPOINT    # paste: https://<your managed OTLP endpoint>
+name = "legalsakshya-telemetry"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+# Optional: at most 120 requests a minute per visitor IP. Remove the leading "# " on the five lines below to turn it on.
+# [[ratelimits]]
+# name = "TELEMETRY_LIMITER"
+# namespace_id = "1001"
+#   [ratelimits.simple]
+#   limit = 120
+#   period = 60
