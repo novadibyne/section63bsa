@@ -59,7 +59,7 @@ function DeviceEditor({
     setD((x) => ({ ...x, categories: on ? [...x.categories, k] : x.categories.filter((c) => c !== k) }));
   const setId = (i: number, patch: Partial<{ idType: IdentifierType; value: string }>) =>
     setD((x) => ({ ...x, identifiers: x.identifiers.map((id, j) => (j === i ? { ...id, ...patch } : id)) }));
-  const applyScan = ({ imeis, serial }: { imeis: string[]; serial?: string }) =>
+  const applyScan = ({ imeis, serial, makeModel }: { imeis: string[]; serial?: string; makeModel?: string }) =>
     setD((x) => {
       const identifiers = [...x.identifiers];
       for (const v of imeis) {
@@ -68,7 +68,7 @@ function DeviceEditor({
         if (empty >= 0) identifiers[empty] = { idType: 'imei', value: v };
         else identifiers.push({ idType: 'imei', value: v });
       }
-      return { ...x, identifiers, serialNumber: serial ?? x.serialNumber };
+      return { ...x, identifiers, serialNumber: serial ?? x.serialNumber, makeModel: makeModel ?? x.makeModel };
     });
 
   return (
@@ -120,8 +120,8 @@ function DeviceEditor({
           {!readOnly && (
             <div className="flex flex-col gap-3 rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[13.5px] leading-snug text-brand-900">
-                <strong className="font-semibold">Have the phone or its box?</strong> Read the IMEI numbers and serial number from a photo
-                instead of typing them.
+                <strong className="font-semibold">Have the phone or its box?</strong> Fill in the make & model, IMEI numbers and serial
+                number automatically from a photo.
               </p>
               <ScanIdsButton evidenceId={d.evidenceId} onUse={applyScan} />
             </div>

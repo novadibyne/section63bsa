@@ -103,11 +103,15 @@ export interface PartB extends Declarant {
   qualification: string;
 }
 
+/** Which parts of the Schedule a certificate covers. Records made before this choice existed have none: both. */
+export type CertificateParts = 'both' | 'A' | 'B';
+
 export interface Certificate {
   id: string;
   evidenceId: string;
   version: number;
   scheduleVersion: 'BSA-2023-original';
+  parts?: CertificateParts;
   partA: PartA;
   partB: PartB;
   hashAlgo: HashAlgo;

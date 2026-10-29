@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { Toaster } from 'sonner';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/plus-jakarta-sans';
 import '@fontsource-variable/jetbrains-mono';
@@ -8,6 +7,7 @@ import './globals.css';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { ServiceWorker } from '@/components/offline';
+import { AppToaster } from '@/components/app-toaster';
 import { APP_NAME, APP_TAGLINE, SITE_URL, assetPath } from '@/lib/config';
 
 export const metadata: Metadata = {
@@ -15,10 +15,13 @@ export const metadata: Metadata = {
   title: { default: `${APP_NAME} · ${APP_TAGLINE}`, template: `%s · ${APP_NAME}` },
   description:
     'Hash electronic evidence and draft the Section 63(4)(c) BSA certificate (Part A, Part B and Hash Report) entirely in your browser. Files are never uploaded.',
-  icons: { icon: assetPath('favicon.svg') },
+  icons: { icon: assetPath('favicon.svg'), apple: assetPath('icons/apple-touch-icon.png') },
+  // iPhone: open full screen, with its own name, when added to the Home Screen.
+  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: 'default' },
+  formatDetection: { telephone: false },
 };
 
-export const viewport: Viewport = { themeColor: '#0d1b3e' };
+export const viewport: Viewport = { themeColor: '#0d1b3e', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
 // connect-src 'self' means the browser itself refuses to send file contents anywhere else.
 const CSP = [
@@ -45,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="flex-1">{children}</main>
         <SiteFooter />
         <ServiceWorker />
-        <Toaster position="bottom-right" toastOptions={{ className: 'font-sans' }} richColors closeButton />
+        <AppToaster />
       </body>
     </html>
   );

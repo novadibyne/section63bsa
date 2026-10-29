@@ -2,13 +2,15 @@
 
 import * as React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertCircle, CheckCircle2, Download, FileCheck2, FileText, Lock, RefreshCcw, Stamp } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Download, ExternalLink, FileCheck2, FileText, Lock, RefreshCcw, Share2, Stamp } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/lib/db';
 import type { Certificate, Device, Evidence, EvidenceFile } from '@/lib/types';
 import { buildPartValues, findIssues } from '@/lib/legal/certificate-values';
 import { PART_A, PART_B } from '@/lib/legal/schedule-63';
-import { downloadCertificatePdf, finaliseCertificate, generateDraftPdf } from '@/lib/actions';
+import { downloadCertificatePdf, finaliseCertificate, generateDraftPdf, shareStoredPdf } from '@/lib/actions';
+import { hasPart, partsOf } from '@/lib/legal/parts';
+import { useCanShareFiles } from '@/lib/hooks';
 import { formatIst } from '@/lib/time';
 import { cn, formatBytes } from '@/lib/utils';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
@@ -122,28 +124,35 @@ export function StepReview({
     }
   };
 
+  const parts = partsOf(cert);
+  const canShare = useCanShareFiles();
+  const share = async () => {
+    if (!stored || !(await shareStoredPdf(evidence, cert, stored))) await downloadCertificatePdf(cert.id);
+  };
+
   const tabs: { id: Tab; label: string; show: boolean }[] = [
-    { id: 'A', label: 'Part A', show: true },
-    { id: 'B', label: 'Part B', show: true },
+    { id: 'A', label: 'Part A', show: hasPart(cert, 'A') },
+    { id: 'B', label: 'Part B', show: hasPart(cert, 'B') },
     { id: 'H', label: 'Hash report', show: true },
     { id: 'PDF', label: stored?.final ? 'Final PDF' : 'PDF', show: !!stored },
   ];
+
+  const visibleTabs = tabs.filter((t) => t.show);
+  const shownTab = visibleTabs.some((t) => t.id === tab) ? tab : visibleTabs[0].id;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       {element}
       <div className="min-w-0">
         <div className="mb-4 flex flex-wrap gap-1 rounded-xl bg-ink-100/70 p-1">
-          {tabs
-            .filter((t) => t.show)
-            .map((t) => (
+          {visibleTabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => setTab(t.id)}
                 className={cn(
                   'flex-1 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all',
-                  tab === t.id ? 'bg-white text-ink-950 shadow-card' : 'text-ink-600 hover:text-ink-900',
+                  shownTab === t.id ? 'bg-white text-ink-950 shadow-card' : 'text-ink-600 hover:text-ink-900',
                 )}
               >
                 {t.label}
@@ -151,13 +160,22 @@ export function StepReview({
             ))}
         </div>
         <div className="dot-grid rounded-2xl border border-line bg-ink-50/50 p-3 sm:p-6">
-          {tab === 'A' && <SchedulePreview part={PART_A} values={a} showHeading />}
-          {tab === 'B' && <SchedulePreview part={PART_B} values={b} />}
-          {tab === 'H' && <HashReportPreview evidence={evidence} files={files} cert={cert} />}
-          {tab === 'PDF' && pdfUrl && (
+          {shownTab === 'A' && <SchedulePreview part={PART_A} values={a} showHeading />}
+          {shownTab === 'B' && <SchedulePreview part={PART_B} values={b} showHeading={parts === 'B'} />}
+          {shownTab === 'H' && <HashReportPreview evidence={evidence} files={files} cert={cert} />}
+          {shownTab === 'PDF' && pdfUrl && (
             <div className="flex flex-col gap-3">
-              <iframe src={pdfUrl} title="Certificate PDF" className="h-[78vh] w-full rounded-lg bg-white shadow-sheet ring-1 ring-line" />
-              <p className="text-center text-[12.5px] text-ink-500">If the PDF does not display on your device, use Download.</p>
+              {/* Phones can't show a PDF inside a page (iPhone shows only page 1), so they open it instead. */}
+              <iframe src={pdfUrl} title="Certificate PDF" className="hidden h-[78vh] w-full rounded-lg bg-white shadow-sheet ring-1 ring-line sm:block" />
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-6 text-[14px] font-semibold text-ink-900 shadow-card ring-1 ring-line sm:hidden"
+              >
+                <ExternalLink className="size-4" /> Open the PDF
+              </a>
+              <p className="hidden text-center text-[12.5px] text-ink-500 sm:block">If the PDF does not display on your device, use Download.</p>
             </div>
           )}
         </div>
@@ -207,6 +225,11 @@ export function StepReview({
                     <Download /> Download draft
                   </Button>
                 )}
+                {stored && canShare && (
+                  <Button variant="secondary" onClick={share}>
+                    <Share2 /> Share or save draft
+                  </Button>
+                )}
                 <Button variant="brand" onClick={finalise} loading={busy === 'final'} disabled={issues.length > 0 || !!busy}>
                   <FileCheck2 /> Finalise version {cert.version}
                 </Button>
@@ -220,6 +243,11 @@ export function StepReview({
                 <Button variant="brand" onClick={() => downloadCertificatePdf(cert.id)}>
                   <Download /> Download final PDF
                 </Button>
+                {stored && canShare && (
+                  <Button variant="secondary" onClick={share}>
+                    <Share2 /> Share or save to Files
+                  </Button>
+                )}
                 {cert.pdfSha256 && (
                   <div>
                     <p className="mb-1 text-[12px] font-medium text-ink-600">SHA-256 of the final PDF</p>
@@ -241,7 +269,9 @@ export function StepReview({
             <p className="font-display text-[14px] font-semibold text-white">Next steps</p>
             <ol className="mt-2 list-decimal space-y-1 pl-4">
               <li>Print the final PDF.</li>
-              <li>The party signs Part A; the expert signs Part B.</li>
+              {parts === 'both' && <li>The party signs Part A; the expert signs Part B.</li>}
+              {parts === 'A' && <li>The party signs Part A. Attach Part B signed by the expert.</li>}
+              {parts === 'B' && <li>The expert signs Part B. Attach Part A signed by the party.</li>}
               <li>File it with the printouts or copies, and keep the original device and files safe.</li>
             </ol>
           </CardBody>

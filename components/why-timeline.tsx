@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { ArrowRight, Gavel, Landmark, Lightbulb } from 'lucide-react';
+import { Gavel, Landmark, Lightbulb } from 'lucide-react';
 import { CERTIFICATE_HISTORY, WHAT_IT_MEANS } from '@/lib/legal/case-law';
 import { cn } from '@/lib/utils';
 
@@ -41,27 +40,5 @@ export function WhatItMeans({ className }: { className?: string }) {
         ))}
       </ul>
     </div>
-  );
-}
-
-/** The home page's side column: why the certificate matters, from Arjun Panditrao (2020) to Section 63 BSA. */
-export function WhyColumn() {
-  return (
-    <aside className="rounded-3xl border border-line bg-white p-5 shadow-card sm:p-6" aria-labelledby="why-title" data-testid="why-column">
-      <p className="eyebrow mb-2">Why this certificate matters</p>
-      <h2 id="why-title" className="font-display text-[19px] leading-snug font-bold tracking-tight text-ink-950">
-        Without it, a copy of digital evidence can be refused.
-      </h2>
-      <p className="mt-2 text-[13.5px] leading-relaxed text-ink-600">
-        Since <em>Arjun Panditrao Khotkar</em> (2020) the certificate is mandatory, and Section 63 of the BSA now fixes its exact format.
-      </p>
-      <div className="mt-5 pl-2.5">
-        <CertificateTimeline />
-      </div>
-      <WhatItMeans className="mt-5" />
-      <Link href="/why/" className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-brand-700 hover:underline">
-        Read the full story <ArrowRight className="size-4" />
-      </Link>
-    </aside>
   );
 }

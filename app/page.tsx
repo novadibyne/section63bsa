@@ -3,32 +3,15 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
-import {
-  ArrowRight,
-  ClipboardList,
-  Cpu,
-  FileCheck2,
-  FileClock,
-  FileStack,
-  Fingerprint,
-  Lock,
-  Plus,
-  ScanLine,
-  ScrollText,
-  ShieldCheck,
-  Stamp,
-  UserRoundCheck,
-} from 'lucide-react';
+import { ArrowRight, FileClock, Fingerprint, Lock, Plus, ScanLine } from 'lucide-react';
 import { db } from '@/lib/db';
 import type { Evidence, EvidenceStatus } from '@/lib/types';
 import { relativeTime } from '@/lib/time';
-import { APP_NAME, PRIVACY_BADGE, PRIVACY_LINE } from '@/lib/config';
+import { APP_NAME, PRIVACY_BADGE } from '@/lib/config';
 import { ButtonLink } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/misc';
 import { KindIcon, StatusBadge } from '@/components/evidence/kind';
 import { HeroVisual } from '@/components/hero-visual';
-import { WhyColumn } from '@/components/why-column';
+import { InstallApp } from '@/components/install-app';
 
 const NEXT: Record<EvidenceStatus, { label: string; step?: number }> = {
   draft: { label: 'Add files', step: 1 },
@@ -53,7 +36,7 @@ function EvidenceRow({ ev, fileCount }: { ev: Evidence; fileCount: number }) {
       <div className="hidden sm:block">
         <StatusBadge status={ev.status} />
       </div>
-      <ButtonLink href={href} variant={ev.status === 'finalised' ? 'secondary' : 'primary'} size="sm" className="shrink-0">
+      <ButtonLink href={href} variant={ev.status === 'finalised' ? 'secondary' : 'primary'} size="sm" className="shrink-0" aria-label={next.label}>
         <span className="hidden md:inline">{next.label}</span>
         <ArrowRight />
       </ButtonLink>
@@ -62,64 +45,53 @@ function EvidenceRow({ ev, fileCount }: { ev: Evidence; fileCount: number }) {
 }
 
 const HOW = [
-  { icon: FileStack, title: 'Add your files', text: 'Photos, screenshots, recordings, a WhatsApp chat export or documents. Each one gets its unique fingerprint (hash) straight away.' },
-  { icon: Cpu, title: 'Describe the phone or computer', text: 'Make, model, serial number and IMEI. Scan them from a photo instead of typing.' },
-  { icon: UserRoundCheck, title: 'Fill in the two declarations', text: 'Part A is for you, Part B for the expert. The legal wording is filled in exactly as the law sets it out.' },
-  { icon: Stamp, title: 'Download and sign', text: 'Check everything, then download the PDF and sign it. Find it again any time under My certificates.' },
+  { title: 'Add your files', text: 'Photos, screenshots, recordings, a WhatsApp chat or documents.' },
+  { title: 'Scan the phone', text: 'Make, model, IMEI and serial number are read from a photo.' },
+  { title: 'Fill in Part A and/or Part B', text: 'The legal wording is filled in exactly as the law sets it out.' },
+  { title: 'Download and sign', text: 'Get the PDF, sign it, and find it again any time.' },
 ];
 
-const NEEDS = [
-  'The evidence files: photos, recordings, chat export or documents',
-  'The phone or computer they came from, for its model, serial number and IMEI',
-  'Your name, your father’s, mother’s or spouse’s name, and your address',
-  'The expert’s details. The expert signs Part B',
-];
-
-export default function Dashboard() {
+export default function Home() {
   const evidence = useLiveQuery(() => db.evidence.orderBy('updatedAt').reverse().toArray(), []);
   const fileCounts = useLiveQuery(async () => {
     const m = new Map<string, number>();
     await db.files.each((f) => m.set(f.evidenceId, (m.get(f.evidenceId) ?? 0) + 1));
     return m;
   }, []);
-  const stats = useLiveQuery(async () => ({
-    files: await db.files.count(),
-    finalised: await db.certificates.where('status').equals('finalised').count(),
-  }), []);
   const hasEvidence = !!evidence?.length;
 
   return (
     <div>
-      {/* Hero */}
       <section className="relative overflow-hidden border-b border-line bg-white">
         <div className="dot-grid absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:py-20">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[1.1fr_1fr] lg:py-20">
           <div>
             <p className="eyebrow inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 shadow-card">
               <span className="size-1.5 rounded-full bg-brand-500" />
               Bharatiya Sakshya Adhiniyam, 2023 · Section 63
             </p>
-            <h1 className="mt-5 font-display text-[36px] leading-[1.05] font-extrabold tracking-[-0.025em] text-ink-950 sm:text-[52px]">
+            <h1 className="mt-5 font-display text-[34px] leading-[1.05] font-extrabold tracking-[-0.025em] text-ink-950 sm:text-[52px]">
               Make the <span className="text-brand-600">Section 63 certificate</span> for your digital evidence.
             </h1>
-            <p className="mt-5 max-w-xl text-[16.5px] leading-relaxed text-ink-600">
-              Add your photos, recordings, WhatsApp chats or documents. {APP_NAME} prepares the certificate in the exact format the law
-              asks for (Part A, Part B and the Hash Report), ready for you and the expert to sign.
+            <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-ink-600 sm:text-[16.5px]">
+              Add your evidence, and {APP_NAME} prepares the certificate in the exact format the law asks for, ready to sign.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="/evidence/new/" variant="brand" size="lg" data-testid="start">
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <ButtonLink href="/evidence/new/" variant="brand" size="lg" className="w-full sm:w-auto" data-testid="start">
                 <Plus /> Start a new certificate
               </ButtonLink>
-              <ButtonLink href={hasEvidence ? '/history/' : '#how'} variant="secondary" size="lg">
-                {hasEvidence ? <FileClock /> : <ScrollText />}
-                {hasEvidence ? 'My certificates' : 'How it works'}
-              </ButtonLink>
+              {hasEvidence && (
+                <ButtonLink href="/history/" variant="secondary" size="lg" className="w-full sm:w-auto">
+                  <FileClock /> My certificates
+                </ButtonLink>
+              )}
+              <InstallApp />
             </div>
-            <ul className="mt-9 grid gap-3 text-[13.5px] text-ink-700 sm:grid-cols-3">
+            <ul className="mt-8 grid gap-3 text-[13.5px] text-ink-700 sm:grid-cols-3">
               {[
                 [Lock, PRIVACY_BADGE],
                 [Fingerprint, 'A unique fingerprint (SHA-256) for every file'],
-                [ScanLine, 'Read IMEI and serial numbers from a photo'],
+                [ScanLine, 'Phone details read from a photo'],
               ].map(([Icon, text]) => {
                 const I = Icon as typeof Lock;
                 return (
@@ -133,133 +105,42 @@ export default function Dashboard() {
               })}
             </ul>
           </div>
-          <div className="px-6 pb-6 lg:px-0">
+          <div className="hidden px-6 pb-6 lg:block lg:px-0">
             <HeroVisual />
           </div>
         </div>
       </section>
 
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0">
-          {/* Records */}
-          <section id="records" className="scroll-mt-32 pt-12">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="eyebrow mb-2">In this browser</p>
-                <h2 className="font-display text-2xl font-bold tracking-tight text-ink-950">Your evidence</h2>
-              </div>
-              {hasEvidence && stats && (
-                <dl className="flex gap-6 text-right">
-                  {[
-                    ['Records', evidence!.length],
-                    ['Files', stats.files],
-                    ['Final certificates', stats.finalised],
-                  ].map(([k, v]) => (
-                    <div key={k as string}>
-                      <dd className="font-display text-xl font-bold text-ink-950 tabular-nums">{v}</dd>
-                      <dt className="text-[11.5px] text-ink-500">{k}</dt>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </div>
-            <div className="mt-5">
-              {evidence === undefined ? (
-                <div className="h-24 animate-pulse rounded-2xl bg-ink-100/70" />
-              ) : hasEvidence ? (
-                <div className="flex flex-col gap-2.5">
-                  {evidence.map((ev) => (
-                    <EvidenceRow key={ev.id} ev={ev} fileCount={fileCounts?.get(ev.id) ?? 0} />
-                  ))}
-                </div>
-              ) : (
-                <Card>
-                  <EmptyState
-                    icon={<FileCheck2 />}
-                    title="No evidence yet"
-                    description="Start with the files you want to show the court. You can stop and come back any time: everything is saved in this browser."
-                    action={
-                      <ButtonLink href="/evidence/new/" variant="brand">
-                        <Plus /> Start a new certificate
-                      </ButtonLink>
-                    }
-                  />
-                </Card>
-              )}
-            </div>
-          </section>
-
-          {/* How it works */}
-          <section id="how" className="scroll-mt-32 pt-14">
-            <p className="eyebrow mb-2">How it works</p>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-ink-950">Four simple steps</h2>
-            <ol className="mt-6 grid gap-4 sm:grid-cols-2">
-              {HOW.map((h, i) => (
-                <li key={h.title} className="relative rounded-2xl border border-line bg-white p-5 shadow-card">
-                  <span className="absolute top-5 right-5 font-display text-[28px] leading-none font-extrabold text-ink-100">{i + 1}</span>
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-ink-950 text-white">
-                    <h.icon className="size-[18px]" />
-                  </span>
-                  <h3 className="mt-4 font-display text-[15.5px] font-semibold text-ink-950">{h.title}</h3>
-                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-600">{h.text}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          {/* What you need */}
-          <section className="pt-10">
-            <div className="rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6">
-              <p className="flex items-center gap-2 font-display text-[15.5px] font-semibold text-ink-950">
-                <ClipboardList className="size-[18px] text-brand-600" /> Before you start, keep these handy
-              </p>
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                {NEEDS.map((n) => (
-                  <li key={n} className="flex items-start gap-2 text-[13.5px] leading-relaxed text-ink-700">
-                    <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand-600" />
-                    {n}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        </div>
-
-        {/* Why it matters */}
-        <div className="pt-12 lg:sticky lg:top-28 lg:self-start">
-          <WhyColumn />
-        </div>
-      </div>
-
-      {/* Privacy band */}
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <section className="mt-16 overflow-hidden rounded-3xl bg-ink-950 text-white">
-          <div className="grid gap-8 p-8 sm:p-10 md:grid-cols-[1.2fr_1fr] md:items-center">
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-brand-400 uppercase">{PRIVACY_BADGE}</p>
-              <h2 className="mt-3 font-display text-[26px] leading-tight font-bold tracking-tight">{PRIVACY_LINE}</h2>
-              <p className="mt-3 text-[14.5px] leading-relaxed text-ink-300">
-                There is no account and no server. Files are fingerprinted and the PDF is made inside your browser, and the page is locked
-                so it cannot send data anywhere. It even works with the internet switched off.
-              </p>
-              <Link href="/privacy/" className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-semibold text-brand-400 hover:underline">
-                See how to check it yourself <ArrowRight className="size-4" />
-              </Link>
-            </div>
-            <ul className="grid gap-3 text-[13.5px]">
-              {[
-                'Exact legal wording from the Schedule',
-                'DD/MM/YYYY dates and 24-hour IST times',
-                'A new certificate version for each submission',
-                'Re-check any file to prove it has not changed',
-              ].map((t) => (
-                <li key={t} className="flex items-center gap-3 rounded-xl bg-white/5 px-4 py-3 ring-1 ring-white/10">
-                  <ShieldCheck className="size-4 shrink-0 text-brand-400" />
-                  {t}
-                </li>
+        {hasEvidence && (
+          <section id="records" className="pt-10">
+            <h2 className="font-display text-xl font-bold tracking-tight text-ink-950">Continue where you left off</h2>
+            <div className="mt-4 flex flex-col gap-2.5">
+              {evidence!.slice(0, 5).map((ev) => (
+                <EvidenceRow key={ev.id} ev={ev} fileCount={fileCounts?.get(ev.id) ?? 0} />
               ))}
-            </ul>
-          </div>
+            </div>
+            {evidence!.length > 5 && (
+              <Link href="/history/" className="mt-3 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-brand-700 hover:underline">
+                See all in My certificates <ArrowRight className="size-4" />
+              </Link>
+            )}
+          </section>
+        )}
+
+        <section id="how" className="pt-10">
+          <h2 className="font-display text-xl font-bold tracking-tight text-ink-950">How it works</h2>
+          <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {HOW.map((h, i) => (
+              <li key={h.title} className="flex gap-3.5 rounded-2xl border border-line bg-white p-4 shadow-card">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-ink-950 text-[13px] font-bold text-white">{i + 1}</span>
+                <div>
+                  <h3 className="font-display text-[15px] font-semibold text-ink-950">{h.title}</h3>
+                  <p className="mt-0.5 text-[13.5px] leading-relaxed text-ink-600">{h.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </section>
       </div>
     </div>

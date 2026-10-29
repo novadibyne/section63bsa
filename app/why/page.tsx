@@ -4,7 +4,7 @@ import { SECTION_63_4, SECTION_63_GUIDE } from '@/lib/legal/section-63';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { ButtonLink } from '@/components/ui/button';
 import { Callout, PageHeader } from '@/components/ui/misc';
-import { CertificateTimeline, WhatItMeans } from '@/components/why-column';
+import { CertificateTimeline, WhatItMeans } from '@/components/why-timeline';
 
 export const metadata = { title: 'Why the certificate matters' };
 
@@ -22,7 +22,12 @@ export default function WhyPage() {
         }
       />
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50/70 px-5 py-4 text-[14.5px] leading-relaxed text-brand-900" data-testid="why-summary">
+        Since <em className="font-semibold">Arjun Panditrao Khotkar v. Kailash Kushanrao Gorantyal</em> (2020), the certificate is
+        mandatory for any copy of electronic evidence. Section 63 of the BSA now fixes its exact format: Part A, Part B and the hash value.
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <Card>
           <CardBody className="py-7 pl-9 sm:pl-10">
             <CertificateTimeline full />

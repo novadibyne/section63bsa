@@ -12,6 +12,7 @@ import { exportBundle } from '@/lib/bundle/bundle';
 import { ACTION_LABEL } from '@/lib/audit/append';
 import { DEVICE_SOURCE_OPTIONS } from '@/lib/legal/schedule-63';
 import { IDENTIFIER_LABEL } from '@/lib/legal/validators';
+import { PARTS_LABEL, partsOf } from '@/lib/legal/parts';
 import { KIND_LABEL } from '@/lib/evidence/detect';
 import { formatIst, relativeTime } from '@/lib/time';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
@@ -164,7 +165,9 @@ function Detail() {
                 certs.map((c) => (
                   <div key={c.id} className="rounded-xl border border-line p-3.5">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-display text-[14.5px] font-semibold text-ink-950">Version {c.version}</p>
+                      <p className="font-display text-[14.5px] font-semibold text-ink-950">
+                        Version {c.version} <span className="text-[12.5px] font-normal text-ink-500">· {PARTS_LABEL[partsOf(c)]}</span>
+                      </p>
                       <Badge tone={c.status === 'finalised' ? 'brand' : 'amber'} dot>
                         {c.status === 'finalised' ? 'Finalised' : 'Draft'}
                       </Badge>

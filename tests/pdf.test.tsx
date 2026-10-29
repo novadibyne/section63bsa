@@ -38,3 +38,16 @@ describe('certificate PDF with many files', () => {
     expect(doc.getPageCount()).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe('certificate PDF for one part', () => {
+  it.each([
+    ['A', 'Part A only'],
+    ['B', 'Part B only'],
+  ] as const)('renders only Part %s and the Hash Report', async (parts, label) => {
+    const ctx = sampleContext();
+    const buf = await renderToBuffer(<CertificateDocument ctx={{ ...ctx, cert: { ...ctx.cert, parts } }} draft />);
+    const doc = await PDFDocument.load(buf);
+    expect(doc.getPageCount()).toBe(2);
+    expect(doc.getTitle()).toContain(label);
+  });
+});

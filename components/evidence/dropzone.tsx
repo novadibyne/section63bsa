@@ -96,7 +96,12 @@ export function Dropzone({ evidenceId, compact }: { evidenceId: string; compact?
           <CloudUpload className="size-5" />
         </div>
         <p className="mt-4 font-display text-[16px] font-semibold text-ink-950">
-          {dragging ? 'Drop to hash' : compact ? 'Add more files' : 'Drop evidence files here'}
+          {dragging ? 'Drop to hash' : compact ? 'Add more files' : (
+            <>
+              <span className="pointer-coarse:hidden">Drop evidence files here</span>
+              <span className="hidden pointer-coarse:inline">Tap to add evidence files</span>
+            </>
+          )}
         </p>
         <p className="mt-1 max-w-md text-[13px] leading-relaxed text-ink-500">
           Photos, screenshots, audio, video, PDFs, emails (.eml) or a WhatsApp export (.txt or .zip). Any file type works.

@@ -32,7 +32,7 @@ export function Dialog({
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="m-auto w-[calc(100%-32px)] max-w-lg rounded-2xl border border-line bg-white p-0 text-ink-900 shadow-lift"
+      className="m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-line bg-white p-0 text-ink-900 shadow-lift"
     >
       <div className="flex items-start justify-between gap-4 px-6 pt-5">
         <div>
@@ -44,7 +44,7 @@ export function Dialog({
         </Button>
       </div>
       {children && <div className="px-6 pt-4">{children}</div>}
-      <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-line bg-ink-50/60 px-6 py-4">{footer}</div>
+      <div className="sticky bottom-0 mt-5 flex flex-wrap justify-end gap-2 border-t border-line bg-ink-50 px-6 py-4">{footer}</div>
     </dialog>
   );
 }

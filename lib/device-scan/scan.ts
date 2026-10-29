@@ -27,14 +27,22 @@ function toCanvas(bmp: ImageBitmap, enlarge: boolean): HTMLCanvasElement {
   return canvas;
 }
 
-/** Light text on a dark screen (dark mode) reads better inverted. */
+/**
+ * Light text on a dark screen (dark mode) reads better inverted. Done pixel by pixel because Safari
+ * ignores the canvas `filter` property.
+ */
 function inverted(src: HTMLCanvasElement): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = src.width;
   canvas.height = src.height;
-  const ctx = canvas.getContext('2d')!;
-  ctx.filter = 'grayscale(1) invert(1) contrast(1.4)';
-  ctx.drawImage(src, 0, 0);
+  const img = src.getContext('2d', { willReadFrequently: true })!.getImageData(0, 0, src.width, src.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const grey = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    const v = Math.max(0, Math.min(255, (255 - grey - 128) * 1.4 + 128));
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  canvas.getContext('2d')!.putImageData(img, 0, 0);
   return canvas;
 }
 

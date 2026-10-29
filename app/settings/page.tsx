@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Textarea } from '@/components/ui/form';
 import { PageHeader, Progress } from '@/components/ui/misc';
 import { useConfirm } from '@/components/ui/dialog';
+import { InstallApp } from '@/components/install-app';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -199,6 +200,7 @@ export default function SettingsPage() {
                 Open-source licences
               </a>
             </div>
+            <InstallApp className="mt-3 -ml-3" />
           </CardBody>
         </Card>
       </div>

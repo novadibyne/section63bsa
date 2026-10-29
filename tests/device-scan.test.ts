@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findDeviceIds, imeisInLine, serialsInText } from '@/lib/device-scan/parse';
+import { findDeviceIds, imeisInLine, makeModelInText, serialsInText } from '@/lib/device-scan/parse';
 
 const IMEI_1 = '490154203237518';
 const IMEI_2 = '356938035643809';
@@ -70,5 +70,33 @@ describe('barcodes', () => {
     expect(r.imeis.map((x) => x.value)).toEqual([IMEI_1, IMEI_2]);
     expect(r.imeis[0].sources.sort()).toEqual(['barcode', 'text']);
     expect(r.serials).toEqual([{ value: 'R5CW12345AB', label: 'Possible serial number', sources: ['barcode'] }]);
+  });
+});
+
+describe('make and model read from text', () => {
+  it('reads a Samsung About phone screen', () => {
+    const text = "Device name\nRavi's Galaxy\nModel name\nGalaxy S23\nModel number\nSM-S911B/DS\nSerial number\nR5CW12345AB";
+    const r = findDeviceIds({ text });
+    expect(r.models[0]).toMatchObject({ value: 'Samsung Galaxy S23 (SM-S911B/DS)', label: 'Make & model' });
+    expect(r.serials[0].value).toBe('R5CW12345AB');
+  });
+
+  it('reads an iPhone About screen with label and value on one line', () => {
+    const text = "Name Ravi's iPhone\nModel Name iPhone 14 Pro\nModel Number MQ0D3HN/A\nSerial Number F2LXK0ABHG7F";
+    expect(makeModelInText(text)).toBe('Apple iPhone 14 Pro (MQ0D3HN/A)');
+    expect(serialsInText(text)).toEqual(['F2LXK0ABHG7F']);
+  });
+
+  it('reads a Pixel and a Redmi', () => {
+    expect(makeModelInText('About phone\nModel\nPixel 8\nAndroid version 15')).toBe('Google Pixel 8');
+    expect(makeModelInText('Device name\nRedmi Note 12 Pro\nModel\n22101316I')).toBe('Xiaomi Redmi Note 12 Pro (22101316I)');
+  });
+
+  it('reads the model on a box label', () => {
+    expect(makeModelInText('Galaxy S23 · SM-S911B/DS · Phantom Black')).toBe('Samsung Galaxy S23 (SM-S911B/DS)');
+  });
+
+  it('finds nothing on an IMEI-only screen', () => {
+    expect(findDeviceIds({ text: `IMEI 1: ${IMEI_1}/01\nIMEI 2: ${IMEI_2}/01` }).models).toEqual([]);
   });
 });

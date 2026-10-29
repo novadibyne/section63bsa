@@ -7,17 +7,21 @@ import { extractMetadata } from './evidence/metadata';
 import { istDateInput, istTimeInput, nowIso } from './time';
 import { downloadBlob, newId, safeFilename } from './utils';
 import type { CertificateContext } from './legal/certificate-values';
-import type { Certificate, Device, Evidence, EvidenceFile, PartA, PartB, ProfileDefaults } from './types';
+import type { Certificate, CertificateParts, Device, Evidence, EvidenceFile, PartA, PartB, ProfileDefaults } from './types';
 
 export const UNTITLED = 'Untitled evidence';
 
 /* ───────────────────────── Evidence ───────────────────────── */
 
-export async function createEvidence(): Promise<string> {
+/** Starts a new record and its first certificate version, covering the chosen parts of the Schedule. */
+export async function createEvidence(parts: CertificateParts = 'both'): Promise<string> {
   const now = nowIso();
   const ev: Evidence = { id: newId(), title: UNTITLED, evidenceType: 'other', status: 'draft', createdAt: now, updatedAt: now };
   await db.evidence.add(ev);
   await appendAudit('evidence.create', { evidenceId: ev.id, details: { title: ev.title } });
+  await createCertificateVersion(ev.id, parts);
+  // Ask the browser to keep this site's data (Safari otherwise clears it after a while without visits).
+  void requestPersistentStorage();
   return ev.id;
 }
 
@@ -194,11 +198,13 @@ export async function removeDevice(d: Device) {
 }
 
 /** Records that IDs were read from a photo. The photo itself is never stored. */
-export async function logDeviceScan(evidenceId: string, imeiCount: number, serialFound: boolean) {
-  const what = [imeiCount && `${imeiCount} IMEI${imeiCount === 1 ? '' : 's'}`, serialFound && 'serial number'].filter(Boolean).join(' and ');
+export async function logDeviceScan(evidenceId: string, imeiCount: number, serialFound: boolean, modelFound = false) {
+  const what = [modelFound && 'make & model', imeiCount && `${imeiCount} IMEI${imeiCount === 1 ? '' : 's'}`, serialFound && 'serial number']
+    .filter(Boolean)
+    .join(', ');
   await appendAudit('device.scan', {
     evidenceId,
-    details: { imeiCount, serialFound, message: `${what || 'Nothing'} used; photo not kept` },
+    details: { imeiCount, serialFound, modelFound, message: `${what || 'Nothing'} used; photo not kept` },
   });
 }
 
@@ -248,7 +254,7 @@ export async function latestCertificate(evidenceId: string): Promise<Certificate
   return db.certificates.where('[evidenceId+version]').between([evidenceId, 0], [evidenceId, Infinity]).last();
 }
 
-export async function createCertificateVersion(evidenceId: string): Promise<Certificate> {
+export async function createCertificateVersion(evidenceId: string, parts?: CertificateParts): Promise<Certificate> {
   const prev = await latestCertificate(evidenceId);
   const defaults = await getProfileDefaults();
   const now = nowIso();
@@ -257,6 +263,7 @@ export async function createCertificateVersion(evidenceId: string): Promise<Cert
     evidenceId,
     version: (prev?.version ?? 0) + 1,
     scheduleVersion: 'BSA-2023-original',
+    parts: parts ?? prev?.parts ?? 'both',
     partA: freshPartA(prev?.partA ?? defaults.party),
     partB: freshPartB(prev?.partB ?? defaults.expert),
     hashAlgo: 'sha256',
@@ -265,7 +272,7 @@ export async function createCertificateVersion(evidenceId: string): Promise<Cert
     updatedAt: now,
   };
   await db.certificates.add(cert);
-  await appendAudit('certificate.create', { evidenceId, certificateId: cert.id, details: { version: cert.version } });
+  await appendAudit('certificate.create', { evidenceId, certificateId: cert.id, details: { version: cert.version, parts: cert.parts } });
   return cert;
 }
 
@@ -287,6 +294,13 @@ export async function updateCertificate(id: string, patch: Partial<Certificate>)
   if (!c) throw new Error('Certificate not found');
   if (c.status === 'finalised') throw new Error('This version is finalised and cannot be edited');
   await db.certificates.update(id, { ...patch, updatedAt: nowIso() });
+}
+
+export async function setCertificateParts(certId: string, parts: CertificateParts) {
+  const c = await db.certificates.get(certId);
+  if (!c || (c.parts ?? 'both') === parts) return;
+  await updateCertificate(certId, { parts });
+  await appendAudit('evidence.update', { evidenceId: c.evidenceId, certificateId: certId, details: { fields: ['parts'], parts } });
 }
 
 export async function loadContext(certId: string): Promise<CertificateContext> {
@@ -339,7 +353,8 @@ export async function finaliseCertificate(certId: string): Promise<{ blob: Blob;
 }
 
 export function pdfFilename(evidence: Evidence, cert: Certificate, final: boolean) {
-  return `${safeFilename(evidence.title)}_s63_certificate_v${cert.version}${final ? '' : '_DRAFT'}.pdf`;
+  const part = cert.parts === 'A' ? '_PartA' : cert.parts === 'B' ? '_PartB' : '';
+  return `${safeFilename(evidence.title)}_s63_certificate${part}_v${cert.version}${final ? '' : '_DRAFT'}.pdf`;
 }
 
 export async function downloadCertificatePdf(certId: string) {
@@ -355,6 +370,28 @@ export async function downloadCertificatePdf(certId: string) {
     certificateId: certId,
     details: { version: ctx.cert.version, final: stored!.final, pdfSha256: stored!.sha256 },
   });
+}
+
+/**
+ * Opens the phone's share sheet with a PDF that is already stored (Save to Files, WhatsApp, email…).
+ * The file must be ready before the tap: Safari only allows sharing straight from a user gesture.
+ * Returns false when sharing isn't possible, so the caller can download instead.
+ */
+export async function shareStoredPdf(evidence: Evidence, cert: Certificate, pdf: { blob: Blob; final: boolean; sha256: string }): Promise<boolean> {
+  const file = new File([pdf.blob], pdfFilename(evidence, cert, pdf.final), { type: 'application/pdf' });
+  if (!navigator.canShare?.({ files: [file] })) return false;
+  try {
+    await navigator.share({ files: [file], title: file.name });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return true; // the user closed the share sheet
+    return false;
+  }
+  await appendAudit('certificate.download', {
+    evidenceId: evidence.id,
+    certificateId: cert.id,
+    details: { version: cert.version, final: pdf.final, pdfSha256: pdf.sha256, via: 'share' },
+  });
+  return true;
 }
 
 /** Downloads the PDF as it stands now: the stored final PDF, or a draft rebuilt from the latest details. */

@@ -46,6 +46,14 @@ describe('certificate values', () => {
   it('reports nothing missing for a complete certificate', () => {
     expect(findIssues({ evidence, files: [file(1)], devices: [device], cert })).toEqual([]);
   });
+  it('only asks for the parts being made', () => {
+    const blankA = { ...cert.partA, fullName: '' };
+    const blankB = { ...cert.partB, fullName: '' };
+    const withBlanks = { ...cert, partA: blankA, partB: blankB };
+    expect(findIssues({ evidence, files: [file(1)], devices: [device], cert: { ...withBlanks, parts: 'A' } }).map((i) => i.step)).toEqual([3]);
+    expect(findIssues({ evidence, files: [file(1)], devices: [device], cert: { ...withBlanks, parts: 'B' } }).map((i) => i.step)).toEqual([4]);
+    expect(findIssues({ evidence, files: [file(1)], devices: [device], cert: withBlanks }).map((i) => i.step)).toEqual([3, 4]);
+  });
   it('reports what is missing', () => {
     const issues = findIssues({ evidence: { ...evidence, mannerOfProduction: '' }, files: [], devices: [], cert: { ...cert, declarationAcknowledgedAt: undefined } });
     expect(issues.map((i) => i.step)).toEqual([1, 1, 2, 3]);

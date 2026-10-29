@@ -46,3 +46,17 @@ export function useAutosave<T>(key: string | undefined, initial: T | undefined, 
 
   return [value, update, flush] as const;
 }
+
+/** True on phones and tablets that can hand a file to the share sheet (Save to Files, WhatsApp, email). */
+export function useCanShareFiles(): boolean {
+  const [can, setCan] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      const probe = new File(['%PDF-'], 'probe.pdf', { type: 'application/pdf' });
+      setCan(window.matchMedia('(pointer: coarse)').matches && !!navigator.canShare?.({ files: [probe] }));
+    } catch {
+      setCan(false);
+    }
+  }, []);
+  return can;
+}

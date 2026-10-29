@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface StepDef {
+  id: number;
   label: string;
   hint: string;
 }
@@ -15,24 +16,25 @@ export function Stepper({
   onSelect,
 }: {
   steps: StepDef[];
+  /** id of the current step */
   current: number;
-  complete: (step: number) => boolean;
-  onSelect: (step: number) => void;
+  complete: (id: number) => boolean;
+  onSelect: (id: number) => void;
 }) {
   return (
-    <ol className="grid grid-cols-5 gap-2 sm:gap-3">
+    <ol className="grid gap-2 sm:gap-3" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((s, i) => {
-        const n = i + 1;
-        const active = n === current;
-        const done = !active && complete(n);
+        const active = s.id === current;
+        const done = !active && complete(s.id);
         return (
-          <li key={s.label}>
+          <li key={s.id}>
             <button
               type="button"
-              onClick={() => onSelect(n)}
+              onClick={() => onSelect(s.id)}
               aria-current={active ? 'step' : undefined}
+              aria-label={`Step ${i + 1}: ${s.label}`}
               className={cn(
-                'group flex w-full items-center gap-3 rounded-2xl border px-2.5 py-2.5 text-left transition-all sm:px-4 sm:py-3.5',
+                'group flex w-full items-center justify-center gap-3 rounded-2xl border px-2.5 py-2.5 text-left transition-all sm:justify-start sm:px-4 sm:py-3.5',
                 active
                   ? 'border-ink-900 bg-white shadow-lift ring-1 ring-ink-900'
                   : 'border-line bg-white/70 hover:border-line-strong hover:bg-white',
@@ -44,7 +46,7 @@ export function Stepper({
                   active ? 'bg-ink-900 text-white' : done ? 'bg-brand-600 text-white' : 'bg-ink-100 text-ink-500',
                 )}
               >
-                {done ? <Check className="size-3.5" strokeWidth={3} /> : n}
+                {done ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
               </span>
               <span className="hidden min-w-0 lg:block">
                 <span className={cn('block truncate text-[14px] font-semibold', active ? 'text-ink-950' : 'text-ink-700')}>{s.label}</span>

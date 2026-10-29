@@ -1,14 +1,23 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { PDFDocument } from 'pdf-lib';
 
 const fixture = join(__dirname, '../tests/fixtures/whatsapp-android.txt');
 const imeiPhoto = join(__dirname, '../tests/fixtures/imei-screen.png');
 const expectedSha256 = createHash('sha256').update(readFileSync(fixture)).digest('hex');
 const shots = process.env.E2E_SCREENSHOTS;
 
-test('evidence → certificate → finalised PDF, with nothing uploaded', async ({ page }) => {
+/** Opens "Start a new certificate", picks the parts and lands on step 1. */
+async function startCertificate(page: Page, parts: 'both' | 'A' | 'B') {
+  await page.goto('./evidence/new/');
+  await page.getByTestId(`parts-${parts}`).click();
+  await page.getByTestId('begin').click();
+  await page.waitForURL(/certificate\/\?evidenceId=.+step=1/);
+}
+
+test('evidence → certificate → finalised PDF, with nothing uploaded', async ({ page }, info) => {
   const errors: string[] = [];
   const offsite: string[] = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -18,13 +27,16 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
     // Only network requests count; chrome:// and chrome-extension:// are the browser's own PDF viewer.
     if (u.protocol.startsWith('http') && !['localhost', '127.0.0.1'].includes(u.hostname)) offsite.push(r.url());
   });
-  const snap = async (name: string) => shots && page.screenshot({ path: `${shots}/${name}.png`, fullPage: true });
+  const snap = async (name: string) => shots && page.screenshot({ path: `${shots}/${info.project.name}-${name}.png`, fullPage: true });
 
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Section 63 certificate');
   await snap('01-dashboard');
 
   await page.getByTestId('start').click();
+  await expect(page.getByTestId('parts-both')).toHaveAttribute('aria-checked', 'true');
+  await snap('01a-start');
+  await page.getByTestId('begin').click();
   await page.waitForURL(/certificate\/\?evidenceId=.+step=1/);
 
   // Step 1: add a WhatsApp export; it is hashed in the browser.
@@ -88,7 +100,7 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
   await snap('07-finalised');
 
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Download final PDF/ }).click()]);
-  if (shots) await download.saveAs(`${shots}/final.pdf`);
+  if (shots) await download.saveAs(`${shots}/${info.project.name}-final.pdf`);
   const pdf = readFileSync(await download.path());
   expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
   expect(pdf.length).toBeGreaterThan(4000);
@@ -128,19 +140,19 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
   expect(errors.filter((e) => !/favicon/.test(e)), 'no console errors (incl. CSP violations)').toEqual([]);
 });
 
-test('reads IMEIs and the serial number from the barcodes on a box label', async ({ page }) => {
+test('reads make & model, IMEIs and the serial number from a box label', async ({ page }) => {
   const offsite: string[] = [];
   page.on('request', (r) => {
     const u = new URL(r.url());
     // Only network requests count; chrome:// and chrome-extension:// are the browser's own PDF viewer.
     if (u.protocol.startsWith('http') && !['localhost', '127.0.0.1'].includes(u.hostname)) offsite.push(r.url());
   });
-  await page.goto('./evidence/new/');
-  await page.waitForURL(/certificate\/\?evidenceId=.+step=1/);
+  await startCertificate(page, 'both');
   await page.getByTestId('file-input').setInputFiles(fixture);
   await expect(page.getByTestId('file-card')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('continue').click();
 
+  await page.getByLabel('Make & Model').fill('');
   await page.getByTestId('scan-ids').click();
   await page.getByTestId('scan-file-input').setInputFiles(join(__dirname, '../tests/fixtures/box-label.png'));
   const results = page.getByTestId('scan-results');
@@ -148,8 +160,46 @@ test('reads IMEIs and the serial number from the barcodes on a box label', async
   await expect(results).toContainText('IMEI 2: 356938035643809');
   await expect(results).toContainText('R5CW12345AB');
   await expect(results).toContainText('read from a barcode');
+  await expect(results).toContainText('Make & model: Samsung Galaxy S23 (SM-S911B/DS)');
   if (shots) await page.screenshot({ path: `${shots}/11-box-label-scan.png` });
   await page.getByTestId('scan-use').click();
   await expect(page.getByLabel('IMEI value').nth(1)).toHaveValue('356938035643809');
+  await expect(page.getByLabel('Make & Model')).toHaveValue('Samsung Galaxy S23 (SM-S911B/DS)');
+  await expect(page.getByRole('textbox', { name: 'Serial Number' })).toHaveValue('R5CW12345AB');
   expect(offsite, 'no requests may leave the site').toEqual([]);
+});
+
+test('makes only Part B: Part A is skipped and left out of the PDF', async ({ page }, info) => {
+  await startCertificate(page, 'B');
+  await page.getByTestId('file-input').setInputFiles(fixture);
+  await expect(page.getByTestId('file-card')).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel(/How was this record produced/).fill('Exported via WhatsApp › Export chat');
+  await expect(page.getByTestId('change-parts')).toContainText('Part B only');
+  await expect(page.getByRole('button', { name: /^Step \d: / })).toHaveCount(4);
+
+  await page.getByTestId('continue').click();
+  await page.getByLabel('Make & Model').fill('Samsung Galaxy S23 (SM-S911B)');
+  await expect(page.getByTestId('continue')).toContainText('Next: Expert');
+  await page.getByTestId('continue').click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('The expert’s declaration');
+  await page.locator('#pb-name').fill('Dr. Neha Mehta');
+  await page.locator('#pb-rel').fill('Anil Mehta');
+  await page.locator('#pb-addr').fill('Cyber Forensics Lab, Baner, Pune');
+  await page.locator('#pb-desig').fill('Digital Forensic Examiner');
+  await page.locator('#pb-place').fill('Pune');
+
+  await page.getByTestId('continue').click();
+  await expect(page.getByText('Everything required is filled in')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Part A', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: /Finalise version 1/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Finalise' }).click();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Download final PDF/ }).click()]);
+  expect(download.suggestedFilename()).toMatch(/_s63_certificate_PartB_v1\.pdf$/);
+  const doc = await PDFDocument.load(readFileSync(await download.path()));
+  expect(doc.getPageCount(), 'Part B and the Hash Report').toBe(2);
+  expect(doc.getTitle()).toContain('Part B only');
+
+  await page.goto('./history/');
+  await expect(page.getByTestId('history-row')).toContainText('Part B only');
+  if (shots) await page.screenshot({ path: `${shots}/${info.project.name}-12-part-b-history.png`, fullPage: true });
 });

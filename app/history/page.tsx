@@ -3,12 +3,15 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Download, FileCheck2, FolderOpen, HardDrive, Plus, Search, Stamp } from 'lucide-react';
+import { Download, FileCheck2, FolderOpen, HardDrive, Plus, Search, Share2, Stamp } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/lib/db';
-import { downloadLatestPdf } from '@/lib/actions';
-import type { Certificate, Evidence } from '@/lib/types';
+import { downloadLatestPdf, shareStoredPdf } from '@/lib/actions';
+import { useCanShareFiles } from '@/lib/hooks';
+import { PARTS_LABEL, partsOf } from '@/lib/legal/parts';
+import type { Certificate, Evidence, StoredPdf } from '@/lib/types';
 import { formatIst, relativeTime } from '@/lib/time';
+import { APP_NAME } from '@/lib/config';
 import { cn, shortHash } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button, ButtonLink } from '@/components/ui/button';
@@ -19,11 +22,12 @@ import { Callout, CopyButton, EmptyState, PageHeader } from '@/components/ui/mis
 interface Row {
   cert: Certificate;
   evidence: Evidence;
+  pdf?: StoredPdf;
 }
 
 const when = (c: Certificate) => c.finalisedAt ?? c.generatedAt ?? c.updatedAt;
 
-function CertificateRow({ cert, evidence }: Row) {
+function CertificateRow({ cert, evidence, pdf, canShare }: Row & { canShare: boolean }) {
   const [busy, setBusy] = React.useState(false);
   const final = cert.status === 'finalised';
   const filed = [evidence.courtName, evidence.caseNumber].filter(Boolean).join(' · ');
@@ -58,6 +62,7 @@ function CertificateRow({ cert, evidence }: Row) {
           <Badge tone={final ? 'brand' : 'amber'} dot>
             {final ? 'Final' : 'Draft'}
           </Badge>
+          <Badge tone="neutral">{PARTS_LABEL[partsOf(cert)]}</Badge>
         </div>
         {filed && <p className="mt-0.5 truncate text-[13px] text-ink-600">{filed}</p>}
         <p className="mt-0.5 text-[12.5px] text-ink-500">
@@ -74,6 +79,16 @@ function CertificateRow({ cert, evidence }: Row) {
         <Button variant={final ? 'brand' : 'secondary'} onClick={download} loading={busy} data-testid="history-download">
           {!busy && <Download />} {final ? 'Download PDF' : 'Download draft PDF'}
         </Button>
+        {canShare && pdf && (
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              if (!(await shareStoredPdf(evidence, cert, pdf))) await download();
+            }}
+          >
+            <Share2 /> Share
+          </Button>
+        )}
         <ButtonLink href={`/evidence/?id=${evidence.id}`} variant="ghost">
           <FolderOpen /> Open
         </ButtonLink>
@@ -84,14 +99,17 @@ function CertificateRow({ cert, evidence }: Row) {
 
 export default function HistoryPage() {
   const rows = useLiveQuery(async () => {
-    const [certs, evidence] = await Promise.all([db.certificates.toArray(), db.evidence.toArray()]);
+    const [certs, evidence, pdfs] = await Promise.all([db.certificates.toArray(), db.evidence.toArray(), db.pdfs.toArray()]);
     const byId = new Map(evidence.map((e) => [e.id, e]));
+    // PDFs are loaded up front: a phone's share sheet only opens straight from the tap.
+    const pdfById = new Map(pdfs.map((p) => [p.certificateId, p]));
     return certs
       .filter((c) => byId.has(c.evidenceId))
-      .map((c) => ({ cert: c, evidence: byId.get(c.evidenceId)! }))
+      .map((c) => ({ cert: c, evidence: byId.get(c.evidenceId)!, pdf: pdfById.get(c.id) }))
       .sort((a, b) => when(b.cert).localeCompare(when(a.cert)));
   }, []);
   const [query, setQuery] = React.useState('');
+  const canShare = useCanShareFiles();
 
   const q = query.trim().toLowerCase();
   const shown = (rows ?? []).filter(
@@ -113,7 +131,8 @@ export default function HistoryPage() {
 
       <Callout tone="neutral" icon={<HardDrive />} className="mt-6">
         These are kept only in this browser, on this device. Clearing the browser’s data deletes them, so save the PDFs you need, or
-        export a case bundle from the record’s page as a backup.
+        export a case bundle from the record’s page as a backup. On an iPhone, add {APP_NAME} to the Home Screen so Safari keeps them
+        safely.
       </Callout>
 
       {rows && rows.length > 3 && (
@@ -144,7 +163,7 @@ export default function HistoryPage() {
         ) : (
           <ul className="flex flex-col gap-2.5">
             {shown.map((r) => (
-              <CertificateRow key={r.cert.id} {...r} />
+              <CertificateRow key={r.cert.id} {...r} canShare={canShare} />
             ))}
           </ul>
         )}

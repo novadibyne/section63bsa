@@ -1,5 +1,6 @@
-// Finds IMEIs and serial numbers in text read from a photo (the *#06# screen, Settings › About phone,
-// or the label on the phone's box) and in the barcodes found in it. Pure functions, so they are unit-tested.
+// Finds IMEIs, the serial number and the make & model in text read from a photo (the *#06# screen,
+// Settings › About phone, or the label on the phone's box) and in the barcodes found in it.
+// Pure functions, so they are unit-tested.
 import { digitsOnly, isValidImei } from '@/lib/legal/validators';
 
 export type FoundSource = 'barcode' | 'text';
@@ -14,6 +15,8 @@ export interface FoundId {
 export interface DeviceIdScan {
   imeis: FoundId[];
   serials: FoundId[];
+  /** "Samsung Galaxy S23 (SM-S911B)", ready for the Make & Model field. */
+  models: FoundId[];
 }
 
 export interface BarcodeHit {
@@ -90,6 +93,99 @@ export function serialsInText(text: string): string[] {
   return found;
 }
 
+/* ───────────────────────── Make & model ───────────────────────── */
+
+/** Product lines and the maker they belong to. The name must be followed by a model, e.g. "Galaxy S23". */
+const SERIES_MAKE: Record<string, string> = {
+  galaxy: 'Samsung',
+  iphone: 'Apple',
+  ipad: 'Apple',
+  redmi: 'Xiaomi',
+  poco: 'Xiaomi',
+  xiaomi: 'Xiaomi',
+  pixel: 'Google',
+  oneplus: 'OnePlus',
+  nord: 'OnePlus',
+  vivo: 'vivo',
+  iqoo: 'vivo',
+  oppo: 'OPPO',
+  reno: 'OPPO',
+  realme: 'realme',
+  narzo: 'realme',
+  moto: 'Motorola',
+  motorola: 'Motorola',
+  nokia: 'Nokia',
+  xperia: 'Sony',
+  zenfone: 'Asus',
+};
+const SERIES = new RegExp(
+  `\\b(?:${Object.keys(SERIES_MAKE).join('|')})\\b(?:[ \\t]+(?:[A-Z]?\\d{1,3}[A-Z]{0,2}\\+?|Pro\\+?|Max|Plus|Ultra|Lite|mini|FE|5G|4G|Note|Prime|Neo|Fold\\d?|Flip\\d?|Edge|Power|Play|SE|XR|XS|Turbo|GT|Fusion|Stylus))+`,
+  'i',
+);
+
+/** Model numbers whose shape gives away the maker. */
+const CODE_MAKE: [RegExp, string][] = [
+  [/\bSM-[A-Z]\d{3,4}[A-Z0-9]{0,4}(?:\/DS[A-Z]?)?(?![\w/])/, 'Samsung'],
+  [/\bM[A-Z0-9]{4}[A-Z]{1,2}\/A\b/, 'Apple'],
+  [/\bRMX\d{4}\b/, 'realme'],
+  [/\bXT\d{4}(?:-\d{1,2})?\b/, 'Motorola'],
+  [/\bTA-\d{4}\b/, 'Nokia'],
+  [/\bV2\d{3}[A-Z]?\b/, 'vivo'],
+];
+
+/** Maker names trusted anywhere in the text (others, like "Google", also appear in unrelated settings). */
+const MAKER_WORD = /\b(Samsung|Apple|Xiaomi|OnePlus|vivo|OPPO|realme|Motorola|Nokia|Huawei|Tecno|Infinix|Sony|Asus|Lenovo)\b/i;
+
+const MODEL_NAME_LABEL = /\bmodel\s*name\b\s*[:\-]?\s*(.*)$/i;
+const MODEL_NUMBER_LABEL = /\bmodel\s*(?:number|no\.?|#)\s*[:\-]?\s*(.*)$/i;
+const MODEL_LABEL = /^model\b(?!\s*(?:name|number|no\b|#))\s*[:\-]?\s*(.*)$/i;
+const BRAND_LABEL = /^(?:brand|manufacturer|make)\b\s*[:\-]?\s*(.*)$/i;
+const ANOTHER_LABEL = /^(?:model|serial|imei|android|build|baseband|kernel|status|software|hardware|device|phone|brand|manufacturer|ram|storage|processor)\b/i;
+
+/** The value after a label: on the same line, or (as on About phone screens) on the next line. */
+function labelled(lines: string[], label: RegExp): string | undefined {
+  for (let i = 0; i < lines.length; i++) {
+    const m = label.exec(lines[i]);
+    if (!m) continue;
+    const same = (m[1] ?? '').trim();
+    const v = same || (lines[i + 1] && !ANOTHER_LABEL.test(lines[i + 1]) ? lines[i + 1] : '');
+    if (v) return v.replace(/\s{2,}.*$/, '').slice(0, 40).trim();
+  }
+  return undefined;
+}
+
+const isModelCode = (v: string) => /^[A-Z0-9][A-Z0-9\-/]{2,19}$/i.test(v) && /\d/.test(v) && !/^\d+$/.test(v);
+const seriesIn = (v: string) => SERIES.exec(v)?.[0].replace(/\s+/g, ' ').trim();
+
+/** Make & model as one line for the certificate, e.g. "Samsung Galaxy S23 (SM-S911B/DS)". */
+export function makeModelInText(text: string): string | undefined {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  let name = labelled(lines, MODEL_NAME_LABEL);
+  let code = labelled(lines, MODEL_NUMBER_LABEL)?.split(/\s+/)[0];
+  const plain = labelled(lines, MODEL_LABEL);
+  if (plain) {
+    if (seriesIn(plain)) name ??= plain;
+    else if (isModelCode(plain.split(/\s+/)[0])) code ??= plain.split(/\s+/)[0];
+  }
+  name = name ? (seriesIn(name) ?? (/[a-z]/i.test(name) && !isModelCode(name) ? name : undefined)) : seriesIn(text);
+  if (code && !isModelCode(code)) code = undefined;
+  const coded = CODE_MAKE.map(([re, make]) => ({ m: re.exec(text), make })).find((x) => x.m);
+  code ??= coded?.m?.[0];
+  if (!name && !code) return undefined;
+
+  const make =
+    labelled(lines, BRAND_LABEL)?.split(/\s+/)[0] ??
+    coded?.make ??
+    (name ? SERIES_MAKE[name.split(/\s+/)[0].toLowerCase()] : undefined) ??
+    MAKER_WORD.exec(text)?.[1];
+  const prefix = make && !(name ?? '').toLowerCase().startsWith(make.toLowerCase()) ? `${make} ` : '';
+  return name ? `${prefix}${name}${code ? ` (${code})` : ''}` : `${prefix}${code}`;
+}
+
 const LINEAR_FORMATS = /code\s*-?\s*(128|39|93)|codabar|itf|datamatrix|data\s*matrix|qr/i;
 
 function add(list: FoundId[], value: string, source: FoundSource, label: string) {
@@ -128,5 +224,8 @@ export function findDeviceIds({ text = '', barcodes = [] }: { text?: string; bar
     add(serials, v.toUpperCase(), 'barcode', serials.some((s) => s.value === v.toUpperCase()) ? 'Serial number' : 'Possible serial number');
   }
 
-  return { imeis: imeis.slice(0, 4), serials: serials.slice(0, 4) };
+  const model = makeModelInText(text);
+  const models: FoundId[] = model ? [{ value: model, label: 'Make & model', sources: ['text'] }] : [];
+
+  return { imeis: imeis.slice(0, 4), serials: serials.slice(0, 4), models };
 }

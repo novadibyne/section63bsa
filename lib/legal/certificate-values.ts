@@ -2,6 +2,7 @@ import type { Certificate, Device, Evidence, EvidenceFile } from '@/lib/types';
 import { toDMY } from '@/lib/time';
 import { DEVICE_SOURCE_OPTIONS, emptyValues, type PartValues } from './schedule-63';
 import { IDENTIFIER_LABEL } from './validators';
+import { hasPart } from './parts';
 
 export interface CertificateContext {
   evidence: Evidence;
@@ -94,6 +95,13 @@ export function findIssues(ctx: Omit<CertificateContext, 'cert'> & { cert?: Cert
   if (devices[0] && !devices[0].makeModel?.trim() && !devices[0].categories.includes('cloud'))
     issues.push({ step: 2, message: 'Enter the device make & model' });
   if (!cert) return issues;
+  if (hasPart(cert, 'A')) issues.push(...partAIssues(cert));
+  if (hasPart(cert, 'B')) issues.push(...partBIssues(cert));
+  return issues;
+}
+
+function partAIssues(cert: Certificate): Issue[] {
+  const issues: Issue[] = [];
   const a = cert.partA;
   if (!a.fullName.trim()) issues.push({ step: 3, message: 'Part A: party’s name' });
   if (!a.relationName.trim()) issues.push({ step: 3, message: 'Part A: son/daughter/spouse of' });
@@ -101,6 +109,11 @@ export function findIssues(ctx: Omit<CertificateContext, 'cert'> & { cert?: Cert
   if (!a.control.length) issues.push({ step: 3, message: 'Part A: owned / maintained / managed / operated' });
   if (!cert.declarationAcknowledgedAt) issues.push({ step: 3, message: 'Part A: acknowledge the declaration' });
   if (!a.place.trim()) issues.push({ step: 3, message: 'Part A: place' });
+  return issues;
+}
+
+function partBIssues(cert: Certificate): Issue[] {
+  const issues: Issue[] = [];
   const b = cert.partB;
   if (!b.fullName.trim()) issues.push({ step: 4, message: 'Part B: expert’s name' });
   if (!b.relationName.trim()) issues.push({ step: 4, message: 'Part B: son/daughter/spouse of' });

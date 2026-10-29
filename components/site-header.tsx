@@ -43,7 +43,8 @@ export function SiteHeader() {
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href.replace(/\/$/, '')));
 
   return (
-    <header className="sticky top-0 z-40">
+    // Sticky only on large screens: on a phone a fixed header would take up a third of the screen.
+    <header className="z-40 lg:sticky lg:top-0">
       <PrivacyBar />
       <div className="border-b border-line bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">

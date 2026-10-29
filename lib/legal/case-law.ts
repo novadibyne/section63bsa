@@ -1,5 +1,5 @@
 /**
- * How the electronic-evidence certificate came to be, in plain words. Shown on the home page and on /why/.
+ * How the electronic-evidence certificate came to be, in plain words. Shown on the Why it matters page (/why/).
  * These are summaries for orientation, not statutory text or legal advice; the judgments themselves control.
  */
 

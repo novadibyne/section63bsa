@@ -12,6 +12,7 @@ import {
   type Seg,
 } from '@/lib/legal/schedule-63';
 import { APP_NAME, HASH_WASM_VERSION } from '@/lib/config';
+import { PARTS_LABEL, hasPart, partsOf, signersText } from '@/lib/legal/parts';
 import { formatIst, formatIstSeconds } from '@/lib/time';
 import { formatBytes } from '@/lib/utils';
 import { KIND_LABEL } from '@/lib/evidence/detect';
@@ -148,7 +149,7 @@ function Footer({ ctx, section }: { ctx: CertificateContext; section: string }) 
     <>
       <View style={s.footerRule} fixed />
       <Text style={s.footerText} fixed>
-        Draft prepared with {APP_NAME} on {stamp}. Not valid until verified and signed by the declarant (Part A) and the expert (Part B).
+        Draft prepared with {APP_NAME} on {stamp}. Not valid until verified and signed by {signersText(partsOf(ctx.cert))}.
         {'\n'}Evidence {ctx.evidence.id.slice(0, 8)} · Certificate v{ctx.cert.version}
       </Text>
       <Text style={s.footerPage} fixed>
@@ -231,29 +232,41 @@ export function CertificateDocument({ ctx, draft }: { ctx: CertificateContext; d
   const tool = `hash-wasm ${HASH_WASM_VERSION} in ${browserLabel()}, on the user's device`;
   const ev = ctx.evidence;
   const watermark = draft ? <Text style={s.watermark} fixed>DRAFT</Text> : null;
+  const parts = partsOf(ctx.cert);
+  // The Schedule's heading goes at the top of whichever part comes first.
+  const heading = (
+    <>
+      <Text style={s.heading1}>{SCHEDULE_HEADING[0]}</Text>
+      <Text style={s.heading2}>{SCHEDULE_HEADING[1]}</Text>
+      <Text style={s.heading3}>{SCHEDULE_HEADING[2]}</Text>
+    </>
+  );
 
   return (
     <Document
-      title={`Section 63 BSA certificate — ${ev.title} (v${ctx.cert.version})`}
+      title={`Section 63 BSA certificate${parts === 'both' ? '' : ` (${PARTS_LABEL[parts]})`} — ${ev.title} (v${ctx.cert.version})`}
       author={APP_NAME}
       subject="Certificate under Section 63(4)(c), Bharatiya Sakshya Adhiniyam, 2023"
       creator={APP_NAME}
       producer={APP_NAME}
     >
-      <Page size="A4" style={s.page}>
-        {watermark}
-        <Text style={s.heading1}>{SCHEDULE_HEADING[0]}</Text>
-        <Text style={s.heading2}>{SCHEDULE_HEADING[1]}</Text>
-        <Text style={s.heading3}>{SCHEDULE_HEADING[2]}</Text>
-        <PartView part={PART_A} values={a} />
-        <Footer ctx={ctx} section="Certificate · Part A" />
-      </Page>
+      {hasPart(ctx.cert, 'A') && (
+        <Page size="A4" style={s.page}>
+          {watermark}
+          {heading}
+          <PartView part={PART_A} values={a} />
+          <Footer ctx={ctx} section="Certificate · Part A" />
+        </Page>
+      )}
 
-      <Page size="A4" style={s.page}>
-        {watermark}
-        <PartView part={PART_B} values={b} />
-        <Footer ctx={ctx} section="Certificate · Part B" />
-      </Page>
+      {hasPart(ctx.cert, 'B') && (
+        <Page size="A4" style={s.page}>
+          {watermark}
+          {parts === 'B' && heading}
+          <PartView part={PART_B} values={b} />
+          <Footer ctx={ctx} section="Certificate · Part B" />
+        </Page>
+      )}
 
       <Page size="A4" style={s.page}>
         {watermark}

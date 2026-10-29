@@ -24,6 +24,9 @@ for (const [name, path] of [
 
 test('no horizontal scroll at phone width: wizard', async ({ page }) => {
   await page.goto('./evidence/new/');
+  const startOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(startOverflow).toBeLessThanOrEqual(0);
+  await page.getByTestId('begin').click();
   await page.waitForURL(/certificate\/\?evidenceId=/);
   await page.waitForLoadState('networkidle');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

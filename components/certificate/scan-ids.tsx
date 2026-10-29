@@ -30,7 +30,7 @@ export function ScanIdsButton({
   disabled,
 }: {
   evidenceId: string;
-  onUse: (found: { imeis: string[]; serial?: string }) => void;
+  onUse: (found: { imeis: string[]; serial?: string; makeModel?: string }) => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -63,18 +63,19 @@ export function ScanIdsButton({
       const { scanDeviceIds } = await import('@/lib/device-scan/scan');
       const scan = await scanDeviceIds(photo, (p) => setPhase({ name: 'working', p }));
       const serial = scan.serials.find((s) => s.label === 'Serial number') ?? scan.serials[0];
-      setPicked(new Set([...scan.imeis.map((x) => x.value), ...(serial ? [serial.value] : [])]));
+      setPicked(new Set([...scan.imeis.map((x) => x.value), ...[serial, scan.models[0]].filter(Boolean).map((x) => x!.value)]));
       setPhase({ name: 'results', scan });
     } catch (err) {
       setPhase({ name: 'error', message: err instanceof Error ? err.message : String(err) });
     }
   };
 
-  const toggle = (value: string, on: boolean, serials: FoundId[]) =>
+  const toggle = (value: string, on: boolean, scan: DeviceIdScan) =>
     setPicked((s) => {
       const next = new Set(s);
-      // Only one serial number can go on the certificate.
-      if (on && serials.some((x) => x.value === value)) serials.forEach((x) => next.delete(x.value));
+      // Only one serial number and one make & model can go on the certificate.
+      for (const group of [scan.serials, scan.models])
+        if (on && group.some((x) => x.value === value)) group.forEach((x) => next.delete(x.value));
       if (on) next.add(value);
       else next.delete(value);
       return next;
@@ -83,24 +84,25 @@ export function ScanIdsButton({
   const use = async (scan: DeviceIdScan) => {
     const imeis = scan.imeis.filter((x) => picked.has(x.value)).map((x) => x.value);
     const serial = scan.serials.find((x) => picked.has(x.value))?.value;
-    onUse({ imeis, serial });
+    const makeModel = scan.models.find((x) => picked.has(x.value))?.value;
+    onUse({ imeis, serial, makeModel });
     close();
-    toast.success('Added to the device details', { description: 'The photo was not kept.' });
-    await logDeviceScan(evidenceId, imeis.length, !!serial);
+    toast.success('Filled in from the photo', { description: 'Check the details below. The photo was not kept.' });
+    await logDeviceScan(evidenceId, imeis.length, !!serial, !!makeModel);
   };
 
-  const found = phase.name === 'results' && (phase.scan.imeis.length > 0 || phase.scan.serials.length > 0);
+  const found = phase.name === 'results' && [phase.scan.imeis, phase.scan.serials, phase.scan.models].some((g) => g.length > 0);
 
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)} disabled={disabled} data-testid="scan-ids">
-        <ScanLine /> Scan IMEI / serial from a photo
+        <ScanLine /> Scan from a photo
       </Button>
       <Dialog
         open={open}
         onClose={close}
-        title="Read IMEI and serial number from a photo"
-        description="Take or choose a photo of the phone’s IMEI screen, its About phone page or the label on its box."
+        title="Read the phone’s details from a photo"
+        description="Its IMEI numbers, serial number and make & model are read from a photo of the IMEI screen, the About phone page or the label on its box."
         footer={
           phase.name === 'results' && found ? (
             <>
@@ -108,7 +110,7 @@ export function ScanIdsButton({
                 Try another photo
               </Button>
               <Button onClick={() => use(phase.scan)} disabled={picked.size === 0} data-testid="scan-use">
-                Use selected
+                Use these
               </Button>
             </>
           ) : (
@@ -156,13 +158,13 @@ export function ScanIdsButton({
           {phase.name === 'results' &&
             (found ? (
               <div className="flex flex-col gap-3" data-testid="scan-results">
-                <p className="text-[13.5px] text-ink-700">Tick what matches the phone. Nothing is added until you press “Use selected”.</p>
-                {[...phase.scan.imeis, ...phase.scan.serials].map((x) => (
+                <p className="text-[13.5px] text-ink-700">Found in the photo. Untick anything that doesn’t match the phone, then press “Use these”.</p>
+                {[...phase.scan.models, ...phase.scan.imeis, ...phase.scan.serials].map((x) => (
                   <Checkbox
                     key={x.value}
                     id={`scan-${x.value}`}
                     checked={picked.has(x.value)}
-                    onChange={(on) => toggle(x.value, on, phase.scan.serials)}
+                    onChange={(on) => toggle(x.value, on, phase.scan)}
                     label={
                       <>
                         {x.label}: <span className="font-mono font-semibold tracking-tight">{x.value}</span>
@@ -173,7 +175,7 @@ export function ScanIdsButton({
                 ))}
               </div>
             ) : (
-              <Callout tone="amber" icon={<SearchX />} title="No IMEI or serial number found in this photo">
+              <Callout tone="amber" icon={<SearchX />} title="Nothing readable found in this photo">
                 Try again closer up, with the numbers sharp and filling most of the photo, and without glare.
                 <Button variant="secondary" size="sm" className="mt-2.5" onClick={() => setPhase({ name: 'pick' })}>
                   Try another photo

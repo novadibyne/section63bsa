@@ -80,3 +80,30 @@ dialog::backdrop {
 @media print {
   header, footer, .no-print { display: none !important; }
 }
+
+/* Phones and tablets. These rules sit outside Tailwind's layers on purpose, so they win over utility classes. */
+@media (pointer: coarse) {
+  /* iPhone Safari zooms the page into any field with text smaller than 16px. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+html {
+  /* No grey flash when tapping links and buttons on phones. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Installed as a home-screen app: keep content clear of the notch and the home bar. */
+@media (display-mode: standalone) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  header {
+    padding-top: env(safe-area-inset-top);
+    background: #087f57;
+  }
+}
