@@ -199,6 +199,9 @@ export default function SettingsPage() {
               <Link href="/privacy/" className="text-brand-700 hover:underline">
                 Privacy
               </Link>
+              <Link href="/terms/" className="text-brand-700 hover:underline">
+                Terms of use
+              </Link>
             </div>
             <InstallApp className="mt-3 -ml-3" />
           </CardBody>

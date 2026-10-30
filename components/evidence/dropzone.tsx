@@ -21,6 +21,7 @@ const STAGE_LABEL: Record<AddProgress['stage'], string> = {
   detecting: 'Detecting file type',
   hashing: 'Computing SHA-256',
   reading: 'Reading metadata',
+  checking: 'Checking the file',
   saving: 'Saving',
   done: 'Done',
   error: 'Failed',
@@ -153,7 +154,7 @@ export function Dropzone({ evidenceId, compact }: { evidenceId: string; compact?
                   value={
                     q.p.stage === 'hashing'
                       ? 0.05 + (q.p.progress ?? 0) * 0.8
-                      : ({ queued: 0, detecting: 0.03, reading: 0.9, saving: 0.96, done: 1 } as Record<string, number>)[q.p.stage] ?? 0
+                      : ({ queued: 0, detecting: 0.03, reading: 0.88, checking: 0.92, saving: 0.97, done: 1 } as Record<string, number>)[q.p.stage] ?? 0
                   }
                 />
               )}

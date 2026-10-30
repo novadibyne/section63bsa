@@ -48,6 +48,7 @@ export const ACTION_LABEL: Record<AuditAction, string> = {
   'file.remove': 'File removed',
   'file.reverify': 'File re-verified',
   'file.acquisition_hash': 'Acquisition hash recorded',
+  'file.observe': 'File observations generated',
   'device.save': 'Device saved',
   'device.scan': 'Device IDs read from a photo',
   'device.remove': 'Device removed',

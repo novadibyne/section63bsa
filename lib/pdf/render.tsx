@@ -17,6 +17,8 @@ import { formatIst, formatIstSeconds } from '@/lib/time';
 import { formatBytes } from '@/lib/utils';
 import { KIND_LABEL } from '@/lib/evidence/detect';
 import type { EvidenceFile } from '@/lib/types';
+import { crossObservations } from '@/lib/evidence/observations/cross';
+import { OBSERVATIONS_NOTICE, OBSERVATION_RULES_VERSION, STATUS_LABEL } from '@/lib/evidence/observations/types';
 
 // Never hyphenate: hash values and identifiers must print exactly as computed.
 Font.registerHyphenationCallback((word) => [word]);
@@ -56,6 +58,21 @@ const s = StyleSheet.create({
   mono: { fontFamily: 'Courier', fontSize: 8.6 },
   memberRow: { paddingVertical: 2.5, borderBottomWidth: 0.4, borderBottomColor: LINE },
   small: { fontSize: 8.5, color: MUTED, lineHeight: 1.5 },
+  // File observations annexure: the notice repeats in a band above the footer on every page.
+  obsPage: { paddingBottom: 128 },
+  obsItem: { borderTopWidth: 0.4, borderTopColor: LINE, paddingVertical: 5 },
+  noticeBand: {
+    position: 'absolute',
+    bottom: 62,
+    left: 54,
+    right: 54,
+    padding: 6,
+    borderWidth: 0.6,
+    borderColor: LINE,
+    backgroundColor: '#f4f6fa',
+    fontSize: 7.4,
+    lineHeight: 1.4,
+  },
 });
 
 function Tick() {
@@ -226,6 +243,55 @@ function FileCard({ f, n, tool }: { f: EvidenceFile; n: number; tool: string }) 
   );
 }
 
+/** The optional annexure: what was read from each file, for an examiner. Never part of the certificate. */
+function ObservationsAnnexure({ ctx, watermark }: { ctx: CertificateContext; watermark: React.ReactNode }) {
+  return (
+    <Page size="A4" style={[s.page, s.obsPage]}>
+      {watermark}
+      <Text style={s.annexTitle}>ANNEXURE — FILE OBSERVATIONS (INFORMATIONAL)</Text>
+      <Text style={s.annexSub}>
+        Attached at the choice of the party or the expert. Not part of the certificate under Section 63(4). Certificate version{' '}
+        {ctx.cert.version} · observation rules version {OBSERVATION_RULES_VERSION}
+      </Text>
+      {ctx.files.map((f, i) => {
+        const items = f.observations ? [...f.observations.items, ...crossObservations(f, ctx.files, ctx.devices[0])] : undefined;
+        return (
+          <View key={f.id} style={{ marginBottom: 12 }}>
+            <View wrap={false}>
+              <Text style={s.fileName}>
+                {i + 1}. {trimName(f.originalFilename)}
+              </Text>
+              <Text style={[s.mono, { fontSize: 7.8, marginBottom: 6 }]}>SHA-256 {f.sha256}</Text>
+            </View>
+            {!items ? (
+              <Text style={s.small}>Not checked: this file was added before file observations existed.</Text>
+            ) : !items.length ? (
+              <Text style={s.small}>No checks apply to this kind of file.</Text>
+            ) : (
+              items.map((o) => (
+                <View key={o.id} style={s.obsItem} wrap={false}>
+                  <Text style={{ fontSize: 9 }}>
+                    <Text style={s.filled}>{STATUS_LABEL[o.status].toUpperCase()}</Text>
+                    {'  ·  '}
+                    <Text style={s.filled}>{o.check}</Text>
+                  </Text>
+                  <Text style={{ fontSize: 9, marginTop: 2 }}>{o.finding}</Text>
+                  {o.note ? <Text style={[s.small, { marginTop: 2 }]}>{o.note}</Text> : null}
+                  <Text style={[s.small, { fontSize: 7.5, marginTop: 2 }]}>How it was checked: {o.method}</Text>
+                </View>
+              ))
+            )}
+          </View>
+        );
+      })}
+      <View style={s.noticeBand} fixed>
+        <Text>{OBSERVATIONS_NOTICE}</Text>
+      </View>
+      <Footer ctx={ctx} section="Annexure · File observations" />
+    </Page>
+  );
+}
+
 export function CertificateDocument({ ctx, draft }: { ctx: CertificateContext; draft: boolean }) {
   const a = buildPartValues('A', ctx);
   const b = buildPartValues('B', ctx);
@@ -300,6 +366,8 @@ export function CertificateDocument({ ctx, draft }: { ctx: CertificateContext; d
         </Text>
         <Footer ctx={ctx} section="Annexure · Hash Report" />
       </Page>
+
+      {ctx.cert.includeObservations && <ObservationsAnnexure ctx={ctx} watermark={watermark} />}
     </Document>
   );
 }

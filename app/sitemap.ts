@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ['/evidence/new/', 0.8],
     ['/why/', 0.8],
     ['/privacy/', 0.5],
+    ['/terms/', 0.3],
   ];
   return pages.map(([path, priority]) => ({ url: `${SITE_URL}${path}`, lastModified: new Date(), changeFrequency: 'monthly', priority }));
 }

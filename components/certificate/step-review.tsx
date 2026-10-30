@@ -8,7 +8,7 @@ import { db } from '@/lib/db';
 import type { Certificate, Device, Evidence, EvidenceFile } from '@/lib/types';
 import { buildPartValues, findIssues } from '@/lib/legal/certificate-values';
 import { PART_A, PART_B } from '@/lib/legal/schedule-63';
-import { downloadCertificatePdf, finaliseCertificate, generateDraftPdf, shareStoredPdf } from '@/lib/actions';
+import { downloadCertificatePdf, finaliseCertificate, generateDraftPdf, setIncludeObservations, shareStoredPdf } from '@/lib/actions';
 import { hasPart, partsOf } from '@/lib/legal/parts';
 import { useCanShareFiles } from '@/lib/hooks';
 import { formatIst } from '@/lib/time';
@@ -17,6 +17,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { HashLine } from '@/components/ui/misc';
+import { Checkbox } from '@/components/ui/form';
 import { useConfirm } from '@/components/ui/dialog';
 import { SchedulePreview } from './schedule-preview';
 
@@ -78,6 +79,21 @@ export function StepReview({
   const [busy, setBusy] = React.useState<'gen' | 'final' | null>(null);
   const { confirm, element } = useConfirm();
   const stored = useLiveQuery(() => db.pdfs.get(cert.id), [cert.id]);
+  // Saved straight to the database (the form's autosave only covers Parts A and B), so read it from there.
+  const savedObservations = !!useLiveQuery(async () => (await db.certificates.get(cert.id))?.includeObservations, [cert.id]);
+  // Shown at once while the choice is being saved.
+  const [choosing, setChoosing] = React.useState<boolean>();
+  const includeObservations = choosing ?? savedObservations;
+  React.useEffect(() => {
+    if (choosing === savedObservations) setChoosing(undefined);
+  }, [choosing, savedObservations]);
+  const chooseObservations = (v: boolean) => {
+    setChoosing(v);
+    setIncludeObservations(cert.id, v).catch((e: unknown) => {
+      setChoosing(undefined);
+      toast.error('Could not save this choice', { description: e instanceof Error ? e.message : String(e) });
+    });
+  };
   const pdfUrl = React.useMemo(() => (stored ? URL.createObjectURL(stored.blob) : undefined), [stored]);
   React.useEffect(() => () => {
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
@@ -217,6 +233,20 @@ export function StepReview({
                     </ul>
                   </div>
                 )}
+                <div className="rounded-xl border border-line p-3" data-testid="observations-option">
+                  <Checkbox
+                    id="include-observations"
+                    checked={includeObservations}
+                    onChange={chooseObservations}
+                    label="Attach file observations (optional)"
+                    description={
+                      <>
+                        Adds an annexure with the facts read from each file, for an examiner. It is marked as informational and not
+                        part of the certificate.{stored ? ' Regenerate the draft to apply this choice.' : ''}
+                      </>
+                    }
+                  />
+                </div>
                 <Button variant="secondary" onClick={generate} loading={busy === 'gen'} disabled={!files.length || !!busy}>
                   <FileText /> {stored ? 'Regenerate draft PDF' : 'Generate draft PDF'}
                 </Button>
@@ -243,6 +273,9 @@ export function StepReview({
                 <Button variant="brand" onClick={() => downloadCertificatePdf(cert.id)}>
                   <Download /> Download final PDF
                 </Button>
+                <p className="text-[12px] text-ink-500">
+                  File observations annexure: {includeObservations ? 'attached' : 'not attached'}.
+                </p>
                 {stored && canShare && (
                   <Button variant="secondary" onClick={share}>
                     <Share2 /> Share or save to Files

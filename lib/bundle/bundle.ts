@@ -4,6 +4,8 @@ import { sha256Bytes } from '@/lib/evidence/hash-core';
 import { nowIso } from '@/lib/time';
 import { downloadBlob, safeFilename } from '@/lib/utils';
 import type { AuditEvent, Certificate, Device, Evidence, EvidenceFile, StoredPdf } from '@/lib/types';
+import { crossObservations } from '@/lib/evidence/observations/cross';
+import { OBSERVATIONS_NOTICE } from '@/lib/evidence/observations/types';
 
 export const BUNDLE_FORMAT = 'section63bsa-case-bundle';
 
@@ -50,6 +52,19 @@ export async function exportBundle(evidenceId: string) {
   const enc = new TextEncoder();
   await add('manifest.json', enc.encode(JSON.stringify(manifest, null, 2)));
   await add('audit.json', enc.encode(JSON.stringify(audit, null, 2)));
+  // The file observations on their own, for an examiner (also inside manifest.json with each file).
+  const observations = {
+    notice: OBSERVATIONS_NOTICE,
+    files: files.map((f) => ({
+      fileId: f.id,
+      name: f.originalFilename,
+      sha256: f.sha256,
+      rules: f.observations?.rules,
+      checkedAt: f.observations?.checkedAt,
+      observations: f.observations ? [...f.observations.items, ...crossObservations(f, files, devices[0])] : null,
+    })),
+  };
+  await add('observations.json', enc.encode(JSON.stringify(observations, null, 2)));
   zip.file('SHA256SUMS.txt', `${sums.join('\n')}\n`);
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });

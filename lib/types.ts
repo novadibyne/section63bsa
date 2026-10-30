@@ -1,4 +1,5 @@
 // Field names match the Phase 2 SQL schema (docs/SPECIFICATION.md, Appendix A).
+import type { FileObservations } from './evidence/observations/types';
 
 export type EvidenceType = 'image' | 'audio' | 'video' | 'document' | 'whatsapp_export' | 'email' | 'other';
 export type EvidenceStatus = 'draft' | 'hashed' | 'certificate_drafted' | 'finalised' | 'archived';
@@ -61,6 +62,8 @@ export interface EvidenceFile {
   metadata: Record<string, unknown>;
   /** Files inside an archive (e.g. a WhatsApp .zip export), each hashed separately. */
   members?: FileMember[];
+  /** Facts read from the file for an examiner (lib/evidence/observations). Absent on files added before them. */
+  observations?: FileObservations;
   blobStored: boolean;
   addedAt: string;
 }
@@ -118,6 +121,8 @@ export interface Certificate {
   declarationAcknowledgedAt?: string;
   status: 'draft' | 'finalised';
   pdfSha256?: string;
+  /** Whether the PDF ends with the optional "File observations" annexure. Off unless the user ticks it. */
+  includeObservations?: boolean;
   generatedAt?: string;
   finalisedAt?: string;
   createdAt: string;
@@ -141,6 +146,7 @@ export type AuditAction =
   | 'file.remove'
   | 'file.reverify'
   | 'file.acquisition_hash'
+  | 'file.observe'
   | 'device.save'
   | 'device.scan'
   | 'device.remove'

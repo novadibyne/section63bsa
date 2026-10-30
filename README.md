@@ -21,6 +21,7 @@ Users add evidence files such as photos, audio, video, documents or WhatsApp cha
 - Photos taken to read an IMEI or serial number are read on the device and then **thrown away**. They are never saved or uploaded.
 - A Content-Security-Policy (`connect-src`) makes the browser refuse to send data to any other site. The only exception is the usage-statistics worker. The text and barcode readers are served by the site itself, not loaded from a CDN.
 - After the first visit the app **works offline**. Anyone can check this: turn on airplane mode and reload. The in-app **Privacy** page walks through it.
+- File observations are worked out on the device as well. The C2PA reader is served by the site, and nothing is looked up online.
 - Records stay in your browser's storage. Export a case bundle (`.zip`) to back them up or move them to another computer.
 
 ### Usage statistics (optional)
@@ -36,6 +37,7 @@ The worker, its settings, the 365-day retention setup, the Kibana dashboard quer
 - Add evidence of several types: images, audio, video, PDFs, WhatsApp exports and any other file
 - SHA-256 hashing (NIST FIPS 180-4), with re-verification later. SHA-1 and MD5 are not used: the Schedule's SHA1 and MD5 boxes are printed as part of the statutory form but left unticked
 - Automatic metadata extraction (EXIF, media details, PDF info, WhatsApp chat summary)
+- **File observations**: facts read from each file for an examiner, such as Content Credentials (C2PA), AI labels, editing software, mismatched dates, PDF revisions and signatures, tracked changes, WhatsApp gaps, email routes and near-duplicate pictures. Each is stated as Noted, Nothing noted or Not checked, never as a verdict. They can be attached to the PDF as an optional informational annexure that is not part of the certificate
 - Device details as the Schedule asks for: category, make and model, colour, serial number, IMEI/UIN/UID/MAC/Cloud ID
 - **Choose what to make** at the start: Part A and Part B, only Part A, or only Part B. The steps, the checks and the PDF follow the choice, and it can be changed until the version is finalised
 - **Read the make & model, IMEI 1, IMEI 2 and the serial number from a photo** of the `*#06#` screen, the About phone page or the box label. Barcodes are read first, then the text. Every IMEI is checked with its Luhn check digit; everything found is pre-ticked and filled in with one tap
@@ -54,6 +56,8 @@ Login, cloud storage, expert accounts and payments are planned for later phases.
 
 This tool **prepares drafts only**. It does not certify anything.
 
+File observations are informational only. They are not part of the certificate, not an expert opinion under Section 39, and not a finding that any file is genuine or altered. See the in-app **Terms of use** (`/terms/`).
+
 - The Section 63(2) declarations in Part A must be made by the party.
 - Part B must be completed and signed by an expert.
 - All signatures are added outside the app.
@@ -61,7 +65,7 @@ This tool **prepares drafts only**. It does not certify anything.
 
 ## Tech stack
 
-Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip · tesseract.js (OCR) · zxing-wasm (barcodes) · OpenTelemetry logs → Cloudflare Worker → Elastic (usage statistics)
+Next.js 15 (static export) · TypeScript · Tailwind CSS 4 · IndexedDB (Dexie) · hash-wasm · @react-pdf/renderer · exifr · music-metadata · pdf-lib · JSZip · c2pa-web (Content Credentials) · tesseract.js (OCR) · zxing-wasm (barcodes) · OpenTelemetry logs → Cloudflare Worker → Elastic (usage statistics)
 
 ## Open-source licences
 

@@ -1,4 +1,4 @@
-// Copies the barcode and text-reading engines into public/vendor/ so the site serves them itself.
+// Copies the barcode, text-reading and Content Credentials engines into public/vendor/ so the site serves them itself.
 // Left alone, tesseract.js and zxing-wasm download these files from a CDN; the Content-Security-Policy
 // (connect-src 'self') blocks that, and the app must never depend on another server anyway.
 import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
@@ -21,6 +21,9 @@ const files = [
   // zxing-wasm: the reader-only WebAssembly build.
   ['zxing-wasm/dist/reader/zxing_reader.wasm', 'zxing/zxing_reader.wasm'],
   ['zxing-wasm/LICENSE', 'zxing/LICENSE'],
+  // c2pa-web: reads Content Credentials (C2PA) for the file observations. Loaded only for files that carry them.
+  ['@contentauth/c2pa-web/dist/resources/c2pa_bg.wasm', 'c2pa/c2pa.wasm'],
+  ['@contentauth/c2pa-web/LICENSE', 'c2pa/LICENSE'],
 ];
 
 rmSync(out, { recursive: true, force: true });

@@ -76,7 +76,8 @@ export function isWhatsAppText(sample: string): boolean {
   return false;
 }
 
-export function parseWhatsAppChat(text: string, previewLimit = 200): ChatSummary {
+/** Every message in an export, with its date read in the order the export uses (DMY or MDY). */
+export function parseChatMessages(text: string): { raw: RawMsg[]; order: ChatSummary['dateOrder']; messages: ChatMessage[] } {
   const raw = splitRaw(text);
   let dmy = false;
   let mdy = false;
@@ -87,10 +88,6 @@ export function parseWhatsAppChat(text: string, previewLimit = 200): ChatSummary
   const order: ChatSummary['dateOrder'] = dmy && !mdy ? 'DMY' : mdy && !dmy ? 'MDY' : 'ambiguous (read as DMY)';
   const useMdy = order === 'MDY';
 
-  const participants = new Set<string>();
-  let system = 0;
-  let media = 0;
-  const preview: ChatMessage[] = [];
   const messages: ChatMessage[] = raw.map((r, i) => {
     const day = useMdy ? r.b : r.a;
     const month = useMdy ? r.a : r.b;
@@ -99,22 +96,26 @@ export function parseWhatsAppChat(text: string, previewLimit = 200): ChatSummary
     if (r.ampm === 'p' && hh < 12) hh += 12;
     if (r.ampm === 'a' && hh === 12) hh = 0;
     const s = SENDER.exec(r.rest);
-    const isSystem = !s;
     const body = (s ? s[2] : r.rest).trim();
-    const isMedia = MEDIA.test(body);
-    if (s) participants.add(s[1].trim());
-    if (isSystem) system++;
-    if (isMedia) media++;
     return {
       n: i + 1,
       date: `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`,
       time: `${String(hh).padStart(2, '0')}:${String(r.mm).padStart(2, '0')}`,
       sender: s?.[1].trim(),
       text: body,
-      system: isSystem,
-      media: isMedia,
+      system: !s,
+      media: MEDIA.test(body),
     };
   });
+  return { raw, order, messages };
+}
+
+export function parseWhatsAppChat(text: string, previewLimit = 200): ChatSummary {
+  const { raw, order, messages } = parseChatMessages(text);
+  const participants = new Set(messages.map((m) => m.sender).filter((s): s is string => !!s));
+  const system = messages.filter((m) => m.system).length;
+  const media = messages.filter((m) => m.media).length;
+  const preview: ChatMessage[] = [];
   for (const m of messages) {
     if (preview.length >= previewLimit) break;
     preview.push(m.text.length > 600 ? { ...m, text: `${m.text.slice(0, 600)}…` } : m);

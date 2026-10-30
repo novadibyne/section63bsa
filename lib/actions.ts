@@ -52,7 +52,7 @@ export async function deleteEvidence(id: string) {
 
 /* ───────────────────────── Files ───────────────────────── */
 
-export type AddStage = 'queued' | 'detecting' | 'hashing' | 'reading' | 'saving' | 'done' | 'error';
+export type AddStage = 'queued' | 'detecting' | 'hashing' | 'reading' | 'checking' | 'saving' | 'done' | 'error';
 export interface AddProgress {
   stage: AddStage;
   progress?: number;
@@ -98,6 +98,9 @@ export async function addFile(
   onProgress({ stage: 'reading' });
   const { metadata, members } = await extractMetadata(file, det);
 
+  onProgress({ stage: 'checking' });
+  const observations = await runObservations(file, det);
+
   onProgress({ stage: 'saving' });
   const record: EvidenceFile = {
     id: fileId,
@@ -113,6 +116,7 @@ export async function addFile(
     hashedAt,
     metadata,
     members,
+    observations,
     blobStored: keepCopy,
     addedAt: nowIso(),
   };
@@ -127,6 +131,7 @@ export async function addFile(
     if (ev?.title === UNTITLED) patch.title = suggestTitle(record);
     await db.evidence.update(evidenceId, patch);
   });
+  if (observations) await logObservations(record, observations);
   if (keepCopy) void requestPersistentStorage();
   track('evidence_added', { file_kind: det.kind });
   onProgress({ stage: 'done', progress: 1 });
@@ -149,6 +154,34 @@ export async function removeFile(fileId: string) {
     await db.blobs.delete(fileId);
   });
   await appendAudit('file.remove', { evidenceId: f.evidenceId, details: { fileId, name: f.originalFilename, sha256: f.sha256 } });
+}
+
+/** Runs the file observations; they are informational, so a failure never stops a file being added. */
+async function runObservations(file: Blob, det: { kind: EvidenceFile['kind']; detectedMime?: string }) {
+  try {
+    const { observeFile } = await import('./evidence/observations');
+    return await observeFile(file, det);
+  } catch {
+    return undefined;
+  }
+}
+
+async function logObservations(f: EvidenceFile, o: NonNullable<EvidenceFile['observations']>) {
+  await appendAudit('file.observe', {
+    evidenceId: f.evidenceId,
+    details: { fileId: f.id, name: f.originalFilename, rules: o.rules, checks: o.items.length, noted: o.items.filter((i) => i.status === 'noted').length },
+  });
+}
+
+/** Runs the file observations on a stored copy, for files added before they existed. */
+export async function observeStoredFile(fileId: string) {
+  const f = await db.files.get(fileId);
+  const blob = await getFileBlob(fileId);
+  if (!f || !blob) throw new Error('No stored copy of this file.');
+  const observations = await runObservations(blob, f);
+  if (!observations) throw new Error('The checks could not run on this file.');
+  await db.files.update(fileId, { observations });
+  await logObservations(f, observations);
 }
 
 export async function getFileBlob(fileId: string): Promise<Blob | undefined> {
@@ -307,6 +340,18 @@ export async function setCertificateParts(certId: string, parts: CertificatePart
   await appendAudit('evidence.update', { evidenceId: c.evidenceId, certificateId: certId, details: { fields: ['parts'], parts } });
 }
 
+/** The optional "File observations" annexure: attached only when the user chooses it. */
+export async function setIncludeObservations(certId: string, include: boolean) {
+  const c = await db.certificates.get(certId);
+  if (!c || !!c.includeObservations === include) return;
+  await updateCertificate(certId, { includeObservations: include });
+  await appendAudit('evidence.update', {
+    evidenceId: c.evidenceId,
+    certificateId: certId,
+    details: { fields: ['includeObservations'], includeObservations: include },
+  });
+}
+
 export async function loadContext(certId: string): Promise<CertificateContext> {
   const cert = await db.certificates.get(certId);
   if (!cert) throw new Error('Certificate not found');
@@ -333,7 +378,7 @@ export async function generateDraftPdf(certId: string): Promise<{ blob: Blob; sh
   await appendAudit('certificate.generate', {
     evidenceId: ctx.evidence.id,
     certificateId: certId,
-    details: { version: ctx.cert.version, pdfSha256: out.sha256, draft: true },
+    details: { version: ctx.cert.version, pdfSha256: out.sha256, draft: true, observationsAnnexure: !!ctx.cert.includeObservations },
   });
   track('pdf_generated', { kind: 'draft', parts: ctx.cert.parts ?? 'both' });
   return out;
@@ -352,7 +397,7 @@ export async function finaliseCertificate(certId: string): Promise<{ blob: Blob;
   await appendAudit('certificate.finalise', {
     evidenceId: ctx.evidence.id,
     certificateId: certId,
-    details: { version: ctx.cert.version, pdfSha256: out.sha256 },
+    details: { version: ctx.cert.version, pdfSha256: out.sha256, observationsAnnexure: !!ctx.cert.includeObservations },
   });
   track('pdf_generated', { kind: 'final', parts: ctx.cert.parts ?? 'both' });
   return out;

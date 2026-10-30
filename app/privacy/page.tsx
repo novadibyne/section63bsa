@@ -1,4 +1,4 @@
-import { Ban, BarChart3, Camera, Cpu, FileLock2, HardDrive, Plane, ServerOff, ShieldCheck } from 'lucide-react';
+import { Ban, BarChart3, Camera, Cpu, FileLock2, HardDrive, Plane, ScanSearch, ServerOff, ShieldCheck } from 'lucide-react';
 import { APP_NAME, PRIVACY_BADGE, PRIVACY_LINE, STATS_RETENTION_DAYS, TELEMETRY_URL } from '@/lib/config';
 import { pageMetadata } from '@/lib/seo';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
@@ -33,6 +33,7 @@ const PROMISES = [
       : 'A security policy tells the browser to refuse any attempt to send data to another website.',
   },
   { icon: Camera, title: 'Photos for IMEI scans are thrown away', text: 'They are read on this device to find the numbers, then dropped. They are never saved or uploaded.' },
+  { icon: ScanSearch, title: 'File checks run here too', text: 'File observations are read from each file on this device. Nothing is sent anywhere to check a file.' },
 ];
 
 const CHECK = [
