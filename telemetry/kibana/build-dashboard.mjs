@@ -1,14 +1,13 @@
 // Builds the Kibana saved objects for the "Legal Hashed usage" dashboard (a data view, visualizations, a map and
 // the dashboard) as NDJSON, for Stack Management → Saved objects → Import.
 //
-//   node telemetry/kibana/build-dashboard.mjs > telemetry/kibana/legal-sakshya-dashboard.ndjson
+//   node telemetry/kibana/build-dashboard.mjs > telemetry/kibana/legal-hashed-dashboard.ndjson
 //
 // Field names are those the Elastic Managed OTLP endpoint gives the worker's data: resource attributes under
 // resource.attributes.*, log attributes under attributes.*, the visitor's location as the geo_point
 // resource.attributes.client.geo.location.
 
-// Object ids keep the app's first name (legal-sakshya), so importing again replaces the objects already in Kibana.
-const DATA_VIEW = 'legal-sakshya-usage';
+const DATA_VIEW = 'legal-hashed-usage';
 const IP = 'resource.attributes.client.address';
 const COUNTRY = 'resource.attributes.client.geo.country_iso_code';
 const REGION = 'resource.attributes.client.geo.region_name';
@@ -85,7 +84,8 @@ const dataView = {
   type: 'index-pattern',
   id: DATA_VIEW,
   attributes: {
-    title: 'logs-legal_sakshya.otel-*',
+    // Also the data stream the app wrote to as Legal Sakshya, so visits from before the rename still count.
+    title: 'logs-legal_hashed.otel-*,logs-legal_sakshya.otel-*',
     name: 'Legal Hashed usage',
     timeFieldName: '@timestamp',
     allowNoIndex: true,
@@ -118,11 +118,11 @@ const dataView = {
 };
 
 const panels = [
-  metric('legal-sakshya-unique-ips', 'Unique IP addresses', uniqueIps()),
-  metric('legal-sakshya-visits', 'Visits', count('Visits (pages opened)', PAGE_VIEW)),
-  metric('legal-sakshya-pdfs', 'PDFs made', count('PDF certificates made', PDF)),
+  metric('legal-hashed-unique-ips', 'Unique IP addresses', uniqueIps()),
+  metric('legal-hashed-visits', 'Visits', count('Visits (pages opened)', PAGE_VIEW)),
+  metric('legal-hashed-pdfs', 'PDFs made', count('PDF certificates made', PDF)),
   lens(
-    'legal-sakshya-ip-table',
+    'legal-hashed-ip-table',
     'Visitors by IP address',
     'lnsDatatable',
     {
@@ -144,7 +144,7 @@ const panels = [
     'Each public IP address, where it is, how many pages it opened and PDFs it made, and when it was last seen.',
   ),
   lens(
-    'legal-sakshya-heatmap',
+    'legal-hashed-heatmap',
     'When people visit (Indian time)',
     'lnsHeatmap',
     {
@@ -172,7 +172,7 @@ const panels = [
     },
   ),
   lens(
-    'legal-sakshya-countries',
+    'legal-hashed-countries',
     'Visitors by country',
     'lnsXY',
     { country: terms('Country', COUNTRY, 15, { type: 'column', columnId: 'ips' }), ips: uniqueIps('Unique IP addresses') },
@@ -185,7 +185,7 @@ const panels = [
     },
   ),
   lens(
-    'legal-sakshya-states',
+    'legal-hashed-states',
     'Visitors by state / region',
     'lnsXY',
     { region: terms('State / region', REGION, 15, { type: 'column', columnId: 'ips' }), ips: uniqueIps('Unique IP addresses') },
@@ -198,7 +198,7 @@ const panels = [
     },
   ),
   lens(
-    'legal-sakshya-per-day',
+    'legal-hashed-per-day',
     'Visits and unique IPs per day',
     'lnsXY',
     { day: perDay(), visits: count('Visits', PAGE_VIEW), ips: uniqueIps('Unique IP addresses') },
@@ -215,7 +215,7 @@ const panels = [
 const sizeByIps = { name: `cardinality_of_${IP}`, origin: 'source' };
 const map = {
   type: 'map',
-  id: 'legal-sakshya-map',
+  id: 'legal-hashed-map',
   attributes: {
     title: 'Where visitors are',
     description: 'Heat map of visitor locations, and circles sized by the number of unique IP addresses in each place.',
@@ -292,22 +292,22 @@ const map = {
 
 // 48-column grid. Left: tiles, map, heatmap and charts. Right: the IP table. [id, type, x, y, w, h, hide title]
 const layout = [
-  ['legal-sakshya-unique-ips', 'lens', 0, 0, 10, 7, true],
-  ['legal-sakshya-visits', 'lens', 10, 0, 9, 7, true],
-  ['legal-sakshya-pdfs', 'lens', 19, 0, 9, 7, true],
-  ['legal-sakshya-ip-table', 'lens', 28, 0, 20, 47],
-  ['legal-sakshya-map', 'map', 0, 7, 28, 22],
-  ['legal-sakshya-heatmap', 'lens', 0, 29, 28, 18],
-  ['legal-sakshya-countries', 'lens', 0, 47, 16, 14],
-  ['legal-sakshya-states', 'lens', 16, 47, 16, 14],
-  ['legal-sakshya-per-day', 'lens', 32, 47, 16, 14],
+  ['legal-hashed-unique-ips', 'lens', 0, 0, 10, 7, true],
+  ['legal-hashed-visits', 'lens', 10, 0, 9, 7, true],
+  ['legal-hashed-pdfs', 'lens', 19, 0, 9, 7, true],
+  ['legal-hashed-ip-table', 'lens', 28, 0, 20, 47],
+  ['legal-hashed-map', 'map', 0, 7, 28, 22],
+  ['legal-hashed-heatmap', 'lens', 0, 29, 28, 18],
+  ['legal-hashed-countries', 'lens', 0, 47, 16, 14],
+  ['legal-hashed-states', 'lens', 16, 47, 16, 14],
+  ['legal-hashed-per-day', 'lens', 32, 47, 16, 14],
 ];
 const dashboard = {
   type: 'dashboard',
-  id: 'legal-sakshya-dashboard',
+  id: 'legal-hashed-dashboard',
   attributes: {
     title: 'Legal Hashed usage',
-    description: 'Visitors, unique IP addresses, where they are and when they visit. Data: logs-legal_sakshya.otel-*.',
+    description: 'Visitors, unique IP addresses, where they are and when they visit. Data: logs-legal_hashed.otel-*.',
     timeRestore: true,
     timeFrom: 'now-30d',
     timeTo: 'now',

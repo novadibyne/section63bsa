@@ -1,6 +1,6 @@
 // Keeps Legal Hashed usage statistics in Elastic for 365 days, then deletes them. Touches nothing else.
 //
-// Usage statistics arrive (through the telemetry worker) in the data stream logs-legal_sakshya.otel-default.
+// Usage statistics arrive (through the telemetry worker) in the data stream logs-legal_hashed.otel-default.
 // This script finds the index template Elastic would use for it, adds a Legal Sakshya copy of that template with
 // a 365-day retention, and applies the retention to data already stored. Safe to run more than once.
 //
@@ -8,10 +8,10 @@
 // ELASTIC_SETUP_API_KEY repository secrets), or locally:
 //   ELASTIC_URL=https://<elasticsearch endpoint> ELASTIC_API_KEY=<encoded key> node telemetry/setup-retention.mjs [--dry-run]
 
-export const DATA_STREAM = 'logs-legal_sakshya.otel-default';
-export const PATTERN = 'logs-legal_sakshya.otel-*';
-export const TEMPLATE = 'logs-legal_sakshya.otel';
-export const POLICY = 'legal-sakshya-365-days';
+export const DATA_STREAM = 'logs-legal_hashed.otel-default';
+export const PATTERN = 'logs-legal_hashed.otel-*';
+export const TEMPLATE = 'logs-legal_hashed.otel';
+export const POLICY = 'legal-hashed-365-days';
 export const DAYS = 365;
 
 /** Glob match for index template patterns ("*" only, as Elasticsearch uses). */
@@ -47,7 +47,7 @@ export function retentionTemplate(base, baseName, maxPriority, { ilm }) {
       settings,
       lifecycle: { ...(t.lifecycle ?? {}), data_retention: `${DAYS}d` },
     },
-    _meta: { description: `Legal Sakshya usage statistics: kept ${DAYS} days`, based_on: baseName, managed_by: 'legal-sakshya' },
+    _meta: { description: `Legal Sakshya usage statistics: kept ${DAYS} days`, based_on: baseName, managed_by: 'legal-hashed' },
   };
 }
 

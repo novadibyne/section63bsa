@@ -68,8 +68,8 @@ export interface QueuedEvent {
   timeMs: number;
 }
 
-/** The page path uses its OpenTelemetry name; the other labels are kept under legal_sakshya.* */
-const attributeName = (label: string) => (label === 'path' ? 'url.path' : `legal_sakshya.${label}`);
+/** The page path uses its OpenTelemetry name; the other labels are kept under legal_hashed.* */
+const attributeName = (label: string) => (label === 'path' ? 'url.path' : `legal_hashed.${label}`);
 
 /** One OTLP logs request for a batch of events from this browser. */
 export function buildLogsRequest(events: QueuedEvent[], resource: Record<string, LabelValue>) {
@@ -79,7 +79,7 @@ export function buildLogsRequest(events: QueuedEvent[], resource: Record<string,
         resource: { attributes: otlpAttributes(resource) },
         scopeLogs: [
           {
-            scope: { name: 'legal-sakshya-web' },
+            scope: { name: 'legal-hashed-web' },
             logRecords: events.map((e) => {
               const nanos = `${Math.round(e.timeMs)}000000`;
               const error = e.name === 'app_error';
@@ -145,8 +145,8 @@ function resourceAttributes(): Record<string, LabelValue> {
     'service.name': TELEMETRY_SERVICE_NAME,
     'service.version': process.env.NEXT_PUBLIC_BUILD_ID || 'local',
     'deployment.environment.name': 'production',
-    // Elastic stores these in their own data stream, logs-legal_sakshya.otel-default.
-    'data_stream.dataset': 'legal_sakshya',
+    // Elastic stores these in their own data stream, logs-legal_hashed.otel-default.
+    'data_stream.dataset': 'legal_hashed',
     'user.id': visitorId(),
     'user_agent.original': ua.slice(0, 300),
     'browser.name': browserName(ua),

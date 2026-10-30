@@ -4,7 +4,7 @@
 // from, adds the visitor's IP address and location (which Cloudflare knows and Elastic otherwise wouldn't see),
 // and forwards them to Elastic's Managed OTLP Endpoint with an API key that never reaches the browser.
 //
-// Settings (Workers → legalsakshya-telemetry → Settings → Variables and Secrets):
+// Settings (Workers → legalhashed-telemetry → Settings → Variables and Secrets):
 //   ELASTIC_OTLP_ENDPOINT  the Managed OTLP endpoint, e.g. https://<project>.ingest.<region>.<provider>.elastic.cloud
 //   ELASTIC_API_KEY        secret, the API key: "ApiKey <encoded key>" (the encoded key alone also works)
 //   TELEMETRY_LIMITER      optional rate-limit binding (see wrangler.toml)
@@ -29,7 +29,7 @@ const MAX_BODY_BYTES = 65536; // 64 KiB
 
 const RESOURCE_LISTS = ["resourceLogs", "resourceSpans", "resourceMetrics"];
 
-const SETTINGS_HELP = "Set it in Workers & Pages → legalsakshya-telemetry → Settings → Variables and Secrets, then deploy.";
+const SETTINGS_HELP = "Set it in Workers & Pages → legalhashed-telemetry → Settings → Variables and Secrets, then deploy.";
 
 /**
  * Reads the two Elastic settings, accepting the usual ways of pasting them: with quotes or spaces, as the
@@ -244,7 +244,7 @@ async function statusReport(env) {
         },
         // A test with no log records: nothing is stored.
         body: logsJsonToProtobuf(JSON.stringify({
-          resourceLogs: [{ resource: { attributes: [{ key: "service.name", value: { stringValue: "legal-sakshya-status-check" } }] } }]
+          resourceLogs: [{ resource: { attributes: [{ key: "service.name", value: { stringValue: "legal-hashed-status-check" } }] } }]
         })),
         redirect: "manual"
       });

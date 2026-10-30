@@ -21,7 +21,7 @@ function otlp(extraResourceAttrs: object[] = []) {
   return JSON.stringify({
     resourceLogs: [
       {
-        resource: { attributes: [{ key: 'service.name', value: { stringValue: 'legal-sakshya' } }, ...extraResourceAttrs] },
+        resource: { attributes: [{ key: 'service.name', value: { stringValue: 'legal-hashed' } }, ...extraResourceAttrs] },
         scopeLogs: [{ logRecords: [{ body: { stringValue: 'pdf_generated' } }] }],
       },
     ],
@@ -32,7 +32,7 @@ function request(path: string, init: RequestInit & { origin?: string | null } = 
   const headers = new Headers(init.headers);
   if (init.origin !== null) headers.set('Origin', init.origin ?? 'https://legalhashed.com');
   headers.set('CF-Connecting-IP', '203.0.113.7');
-  const req = new Request(`https://legalsakshya-telemetry.novadibyne.workers.dev${path}`, { ...init, headers });
+  const req = new Request(`https://legalhashed-telemetry.novadibyne.workers.dev${path}`, { ...init, headers });
   Object.defineProperty(req, 'cf', { value: CF });
   return req;
 }
@@ -71,7 +71,7 @@ describe('telemetry worker', () => {
       sent.resourceLogs[0].resource.attributes.map((a: { key: string; value: Record<string, unknown> }) => [a.key, Object.values(a.value)[0]]),
     );
     expect(attrs).toMatchObject({
-      'service.name': 'legal-sakshya',
+      'service.name': 'legal-hashed',
       'client.address': '203.0.113.7',
       'client.geo.country_iso_code': 'IN',
       'client.geo.region_name': 'Kerala',
@@ -92,10 +92,10 @@ describe('telemetry worker', () => {
     const sample = {
       resourceLogs: [
         {
-          resource: { attributes: [kv('service.name', { stringValue: 'legal-sakshya' }), kv('app.installed', { boolValue: true })] },
+          resource: { attributes: [kv('service.name', { stringValue: 'legal-hashed' }), kv('app.installed', { boolValue: true })] },
           scopeLogs: [
             {
-              scope: { name: 'legal-sakshya-web', version: '1' },
+              scope: { name: 'legal-hashed-web', version: '1' },
               logRecords: [
                 {
                   timeUnixNano: '1793278488496000000',
@@ -124,7 +124,7 @@ describe('telemetry worker', () => {
       ],
     };
     expect(hex(logsJsonToProtobuf(JSON.stringify(sample))!)).toBe(
-      '0ab6020a360a1f0a0c736572766963652e6e616d65120f0a0d6c6567616c2d73616b736879610a130a0d6170702e696e7374616c6c65641202100112fb010a160a116c6567616c2d73616b736879612d77656212013112b70109004c27ba4801e31810111a054552524f522a0b0a096170705f6572726f7232100a0169120b18fbffffffffffffffff01320e0a0164120921740cc85eefee234032100a0161120b2a090a030a01780a02180332100a016b120b32090a070a017912021000320a0a016212053a03010203320f0a0175120a0a08c3bc6ec3afe29c9345010000004a105b8efff798038103d269b633813fc60c5208eee19b7ec3c1b17459004c27ba4801e31862096170705f6572726f721a2768747470733a2f2f6f70656e74656c656d657472792e696f2f736368656d61732f312e32362e30',
+      '0ab4020a350a1e0a0c736572766963652e6e616d65120e0a0c6c6567616c2d6861736865640a130a0d6170702e696e7374616c6c65641202100112fa010a150a106c6567616c2d6861736865642d77656212013112b70109004c27ba4801e31810111a054552524f522a0b0a096170705f6572726f7232100a0169120b18fbffffffffffffffff01320e0a0164120921740cc85eefee234032100a0161120b2a090a030a01780a02180332100a016b120b32090a070a017912021000320a0a016212053a03010203320f0a0175120a0a08c3bc6ec3afe29c9345010000004a105b8efff798038103d269b633813fc60c5208eee19b7ec3c1b17459004c27ba4801e31862096170705f6572726f721a2768747470733a2f2f6f70656e74656c656d657472792e696f2f736368656d61732f312e32362e30',
     );
     expect(hex(logsJsonToProtobuf('{}')!)).toBe('');
     expect(logsJsonToProtobuf('not json')).toBeNull();

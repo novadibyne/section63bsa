@@ -44,25 +44,25 @@ function fakeElastic({ serverless = false, dataStream = false } = {}) {
 
 describe('Elastic retention setup', () => {
   it('matches template patterns like Elasticsearch', () => {
-    expect(matches('logs-*.otel-*', 'logs-legal_sakshya.otel-default')).toBe(true);
-    expect(matches('logs-*-*', 'logs-legal_sakshya.otel-default')).toBe(true);
-    expect(matches('metrics-*-*', 'logs-legal_sakshya.otel-default')).toBe(false);
+    expect(matches('logs-*.otel-*', 'logs-legal_hashed.otel-default')).toBe(true);
+    expect(matches('logs-*-*', 'logs-legal_hashed.otel-default')).toBe(true);
+    expect(matches('metrics-*-*', 'logs-legal_hashed.otel-default')).toBe(false);
   });
 
   it('adds a 365-day policy and a Legal Sakshya copy of the OpenTelemetry logs template', async () => {
     const { calls, fetchImpl } = fakeElastic();
     await setup({ url: 'https://es.test/', apiKey: 'a2V5', log: () => {}, fetchImpl });
 
-    const policy = calls.find((c) => c.path === '/_ilm/policy/legal-sakshya-365-days');
+    const policy = calls.find((c) => c.path === '/_ilm/policy/legal-hashed-365-days');
     expect(policy?.body).toMatchObject({ policy: { phases: { delete: { min_age: '365d' } } } });
 
-    const template = calls.find((c) => c.method === 'PUT' && c.path === '/_index_template/logs-legal_sakshya.otel')?.body as Record<string, any>;
-    expect(template.index_patterns).toEqual(['logs-legal_sakshya.otel-*']);
+    const template = calls.find((c) => c.method === 'PUT' && c.path === '/_index_template/logs-legal_hashed.otel')?.body as Record<string, any>;
+    expect(template.index_patterns).toEqual(['logs-legal_hashed.otel-*']);
     expect(template.priority).toBe(151);
     expect(template.composed_of).toEqual(['logs@settings', 'otel@mappings', 'logs-otel@custom']);
     expect(template.ignore_missing_component_templates).toEqual(['logs-otel@custom']);
     expect(template.data_stream).toEqual({ allow_custom_routing: false });
-    expect(template.template.settings).toEqual({ 'index.mode': 'logsdb', 'index.lifecycle.name': 'legal-sakshya-365-days' });
+    expect(template.template.settings).toEqual({ 'index.mode': 'logsdb', 'index.lifecycle.name': 'legal-hashed-365-days' });
     expect(template.template.lifecycle).toEqual({ data_retention: '365d' });
 
     // No data yet: nothing else to change.
@@ -74,11 +74,11 @@ describe('Elastic retention setup', () => {
     await setup({ url: 'https://es.test', apiKey: 'a2V5', log: () => {}, fetchImpl });
     const paths = calls.filter((c) => c.method !== 'GET').map((c) => `${c.method} ${c.path}`);
     expect(paths).toEqual([
-      'PUT /_ilm/policy/legal-sakshya-365-days',
-      'PUT /_index_template/logs-legal_sakshya.otel',
-      'PUT /_data_stream/logs-legal_sakshya.otel-default/_lifecycle',
-      'PUT /logs-legal_sakshya.otel-default/_settings',
-      'POST /logs-legal_sakshya.otel-default/_rollover',
+      'PUT /_ilm/policy/legal-hashed-365-days',
+      'PUT /_index_template/logs-legal_hashed.otel',
+      'PUT /_data_stream/logs-legal_hashed.otel-default/_lifecycle',
+      'PUT /logs-legal_hashed.otel-default/_settings',
+      'POST /logs-legal_hashed.otel-default/_rollover',
     ]);
   });
 
@@ -86,7 +86,7 @@ describe('Elastic retention setup', () => {
     const { calls, fetchImpl } = fakeElastic({ serverless: true });
     await setup({ url: 'https://es.test', apiKey: 'a2V5', log: () => {}, fetchImpl });
     expect(calls.some((c) => c.path.startsWith('/_ilm/'))).toBe(false);
-    const template = calls.find((c) => c.method === 'PUT' && c.path === '/_index_template/logs-legal_sakshya.otel')?.body as Record<string, any>;
+    const template = calls.find((c) => c.method === 'PUT' && c.path === '/_index_template/logs-legal_hashed.otel')?.body as Record<string, any>;
     expect(template.template.settings['index.lifecycle.name']).toBe('logs');
     expect(template.template.lifecycle).toEqual({ data_retention: '365d' });
   });

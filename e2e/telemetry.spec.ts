@@ -45,9 +45,9 @@ test('usage statistics report what happened, never the evidence', async ({ page 
   for (const event of ['page_view', 'certificate_started', 'evidence_added', 'pdf_generated', 'pdf_downloaded']) {
     expect(names, `reports ${event}`).toContain(event);
   }
-  expect(all).toContain('{"key":"legal_sakshya.parts","value":{"stringValue":"B"}}');
-  expect(all).toContain('{"key":"legal_sakshya.kind","value":{"stringValue":"final"}}');
-  expect(all).toContain('{"key":"service.name","value":{"stringValue":"legal-sakshya"}}');
+  expect(all).toContain('{"key":"legal_hashed.parts","value":{"stringValue":"B"}}');
+  expect(all).toContain('{"key":"legal_hashed.kind","value":{"stringValue":"final"}}');
+  expect(all).toContain('{"key":"service.name","value":{"stringValue":"legal-hashed"}}');
 
   // None of what the user typed or added may be in it.
   for (const secret of ['Ravi', 'Meera', 'Neha', 'Mehta', 'Baner', 'Samsung', '490154203237518', fixtureSha256, 'evidenceId=', 'WhatsApp chat', 'whatsapp-android']) {

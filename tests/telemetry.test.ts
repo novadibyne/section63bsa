@@ -45,10 +45,10 @@ describe('OpenTelemetry logs request', () => {
         { name: 'page_view', labels: { path: '/history/' }, timeMs: 1_761_730_000_000 },
         { name: 'pdf_generated', labels: { kind: 'final', parts: 'B' }, timeMs: 1_761_730_001_000 },
       ],
-      { 'service.name': 'legal-sakshya' },
+      { 'service.name': 'legal-hashed' },
     );
     const rl = req.resourceLogs[0];
-    expect(rl.resource.attributes).toEqual([{ key: 'service.name', value: { stringValue: 'legal-sakshya' } }]);
+    expect(rl.resource.attributes).toEqual([{ key: 'service.name', value: { stringValue: 'legal-hashed' } }]);
     const [view, pdf] = rl.scopeLogs[0].logRecords;
     expect(view.timeUnixNano).toBe('1761730000000000000');
     expect(view.body).toEqual({ stringValue: 'page_view' });
@@ -56,8 +56,8 @@ describe('OpenTelemetry logs request', () => {
       { key: 'event.name', value: { stringValue: 'page_view' } },
       { key: 'url.path', value: { stringValue: '/history/' } },
     ]);
-    expect(pdf.attributes).toContainEqual({ key: 'legal_sakshya.kind', value: { stringValue: 'final' } });
-    expect(pdf.attributes).toContainEqual({ key: 'legal_sakshya.parts', value: { stringValue: 'B' } });
+    expect(pdf.attributes).toContainEqual({ key: 'legal_hashed.kind', value: { stringValue: 'final' } });
+    expect(pdf.attributes).toContainEqual({ key: 'legal_hashed.parts', value: { stringValue: 'B' } });
     expect(pdf.severityText).toBe('INFO');
   });
 });

@@ -16,12 +16,10 @@ export const PRIVACY_LINE = 'Your evidence and the details you enter never leave
  * the visitor's IP address and location and forwards them to Elastic. NEXT_PUBLIC_TELEMETRY_URL (the GitHub
  * repository variable TELEMETRY_URL) points them at another worker, or turns them off when set to "off".
  */
-const DEFAULT_TELEMETRY_URL = 'https://legalsakshya-telemetry.novadibyne.workers.dev';
+const DEFAULT_TELEMETRY_URL = 'https://legalhashed-telemetry.novadibyne.workers.dev';
 const telemetrySetting = process.env.NEXT_PUBLIC_TELEMETRY_URL?.trim();
 export const TELEMETRY_URL = telemetrySetting === 'off' ? '' : (telemetrySetting || DEFAULT_TELEMETRY_URL).replace(/\/+$/, '');
-// The worker address and the names below keep the app's first name, so statistics collected before the move to
-// legalhashed.com stay in the same Elastic data stream.
-export const TELEMETRY_SERVICE_NAME = 'legal-sakshya';
+export const TELEMETRY_SERVICE_NAME = 'legal-hashed';
 /** How long Elastic keeps usage statistics; shown on the Privacy page and set by telemetry/setup-retention.mjs. */
 export const STATS_RETENTION_DAYS = 365;
 

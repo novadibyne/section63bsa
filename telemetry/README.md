@@ -12,16 +12,16 @@ contents. `lib/telemetry.ts` only lets through a fixed list of labels, and an en
 
 ```
 Website (browser) ──OTLP/JSON logs──▶ Cloudflare Worker ──▶ Elastic Managed OTLP Endpoint ──▶ Kibana
-                      /v1/logs         legalsakshya-telemetry    (API key added here)       logs-legal_sakshya.otel-default
+                      /v1/logs         legalhashed-telemetry    (API key added here)       logs-legal_hashed.otel-default
 ```
 
 - **The website** batches events and posts them as OpenTelemetry logs to
-  `https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs`. The address is set in `lib/config.ts`.
+  `https://legalhashed-telemetry.novadibyne.workers.dev/v1/logs`. The address is set in `lib/config.ts`.
 - **The worker** ([`worker/worker.js`](worker/worker.js)) only accepts requests from legalhashed.com (and the app's first address, legalsakshya.com) and caps their
   size. It adds the visitor's IP address and location, which Cloudflare knows and Elastic would otherwise never see,
   converts the logs to OTLP protobuf (the encoding Elastic reads) and forwards them to Elastic with the API key. The
   key never reaches the browser.
-- **Elastic** stores the events in their own data stream, `logs-legal_sakshya.otel-default`.
+- **Elastic** stores the events in their own data stream, `logs-legal_hashed.otel-default`.
 
 ---
 
@@ -30,11 +30,11 @@ Website (browser) ──OTLP/JSON logs──▶ Cloudflare Worker ──▶ Elas
 **Deploy or update it.** After any change to `worker/worker.js`, deploy it again. The version here adds the
 visitor's IP and location; without it, Elastic only sees Cloudflare's address.
 
-- In the Cloudflare dashboard: **Workers & Pages** → **legalsakshya-telemetry** → **Edit code**. Replace everything
+- In the Cloudflare dashboard: **Workers & Pages** → **legalhashed-telemetry** → **Edit code**. Replace everything
   with the contents of [`worker/worker.js`](worker/worker.js), then click **Deploy**. Or:
 - From a computer: `cd telemetry/worker && npx wrangler deploy`. This keeps the settings made in the dashboard.
 
-**Its two settings** (Workers & Pages → legalsakshya-telemetry → **Settings** → **Variables and Secrets** → **Add**,
+**Its two settings** (Workers & Pages → legalhashed-telemetry → **Settings** → **Variables and Secrets** → **Add**,
 then **Deploy**). Use the runtime *Variables and Secrets* section, not *Build* → *Variables and secrets*; the worker
 can't see build variables. The names must be exactly these:
 
@@ -48,7 +48,7 @@ To create the API key, open Kibana → **Dev Tools** and run:
 ```
 POST /_security/api_key
 {
-  "name": "legal-sakshya-telemetry-worker",
+  "name": "legal-hashed-telemetry-worker",
   "role_descriptors": {
     "otlp-write": {
       "applications": [{ "application": "apm", "privileges": ["event:write"], "resources": ["*"] }]
@@ -62,7 +62,7 @@ Copy `encoded` from the response. The secret is `ApiKey ` plus that value.
 **Optional rate limit:** uncomment the `[[ratelimits]]` lines in [`worker/wrangler.toml`](worker/wrangler.toml)
 (120 requests a minute per IP) and deploy with wrangler.
 
-**Check it** by opening <https://legalsakshya-telemetry.novadibyne.workers.dev/status> in a browser. It shows the
+**Check it** by opening <https://legalhashed-telemetry.novadibyne.workers.dev/status> in a browser. It shows the
 settings the worker can see (names only, never values) and sends Elastic an empty test. `"ok": true` means it works.
 
 | The status page says | Fix |
@@ -75,12 +75,12 @@ settings the worker can see (names only, never values) and sends Elastic an empt
 | `Nothing at …/v1/logs (404)` or `redirects` | That is the Elasticsearch or Kibana address. Use the **Managed OTLP endpoint**. |
 
 When the website's requests fail, the worker also writes the reason to its logs (Workers & Pages →
-legalsakshya-telemetry → **Logs**). Each failed request shows `503` (a setting is missing) or `502` (Elastic refused it).
+legalhashed-telemetry → **Logs**). Each failed request shows `503` (a setting is missing) or `502` (Elastic refused it).
 
 Or check from a Mac or Linux terminal. You should see `204`:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" -X POST https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs -H "Origin: https://legalhashed.com" -H "Content-Type: application/json" --data '{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"legal-sakshya"}},{"key":"data_stream.dataset","value":{"stringValue":"legal_sakshya"}}]},"scopeLogs":[{"logRecords":[{"body":{"stringValue":"setup_check"},"attributes":[{"key":"event.name","value":{"stringValue":"setup_check"}}]}]}]}]}'
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://legalhashed-telemetry.novadibyne.workers.dev/v1/logs -H "Origin: https://legalhashed.com" -H "Content-Type: application/json" --data '{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"legal-hashed"}},{"key":"data_stream.dataset","value":{"stringValue":"legal_hashed"}}]},"scopeLogs":[{"logRecords":[{"body":{"stringValue":"setup_check"},"attributes":[{"key":"event.name","value":{"stringValue":"setup_check"}}]}]}]}]}'
 ```
 
 `403` means the Origin isn't allowed, `503` means a setting is missing, and `502` means Elastic refused it. The
@@ -101,12 +101,12 @@ Elastic keeps logs forever by default. To delete usage statistics after 365 days
    ```
    POST /_security/api_key
    {
-     "name": "legal-sakshya-retention-setup",
+     "name": "legal-hashed-retention-setup",
      "expiration": "1d",
      "role_descriptors": {
        "setup": {
          "cluster": ["monitor", "manage_ilm", "manage_index_templates"],
-         "indices": [{ "names": ["logs-legal_sakshya.otel-*"], "privileges": ["manage", "view_index_metadata"] }]
+         "indices": [{ "names": ["logs-legal_hashed.otel-*"], "privileges": ["manage", "view_index_metadata"] }]
        }
      }
    }
@@ -117,14 +117,14 @@ Elastic keeps logs forever by default. To delete usage statistics after 365 days
 3. **Actions** → **Set up Elastic retention** → **Run workflow**. Tick *Only show what would change* first if you
    like, then run it for real.
 
-The script ([`setup-retention.mjs`](setup-retention.mjs)) creates the policy `legal-sakshya-365-days` and an index
-template for `logs-legal_sakshya.otel-*` only, copied from the one Elastic would use. It never changes other data.
+The script ([`setup-retention.mjs`](setup-retention.mjs)) creates the policy `legal-hashed-365-days` and an index
+template for `logs-legal_hashed.otel-*` only, copied from the one Elastic would use. It never changes other data.
 It can run before or after the first events arrive.
 
 ## 4. See the numbers in Kibana
 
 **Import the ready-made dashboard.** Download
-[`kibana/legal-sakshya-dashboard.ndjson`](kibana/legal-sakshya-dashboard.ndjson) (on GitHub: open it, then
+[`kibana/legal-hashed-dashboard.ndjson`](kibana/legal-hashed-dashboard.ndjson) (on GitHub: open it, then
 **Download raw file**). In Kibana open **Stack Management** → **Saved objects** → **Import**, choose the file, keep
 *Check for existing objects* → *Automatically overwrite conflicts*, and click **Import**. Then open **Dashboards** →
 **Legal Hashed usage**.
@@ -139,17 +139,18 @@ It can run before or after the first events arrive.
 | Visits and unique IPs per day | Daily trend |
 
 Click any IP, country, city or map circle to filter the whole dashboard to it. The import also adds the data view
-*Legal Hashed usage* (`logs-legal_sakshya.otel-*`). It works on Elastic Cloud 9.0 and later, and was tested on
+*Legal Hashed usage* (`logs-legal_hashed.otel-*` and `logs-legal_sakshya.otel-*`, where statistics went before the app was
+renamed). It works on Elastic Cloud 9.0 and later, and was tested on
 Kibana 9.0.8 and 9.5.5 with data sent through the worker. The dashboard is built by
 [`kibana/build-dashboard.mjs`](kibana/build-dashboard.mjs): change it there, run
-`node telemetry/kibana/build-dashboard.mjs > telemetry/kibana/legal-sakshya-dashboard.ndjson`, and import again.
+`node telemetry/kibana/build-dashboard.mjs > telemetry/kibana/legal-hashed-dashboard.ndjson`, and import again.
 
 **Your own charts:** in **Discover**, switch to **ES|QL**, paste a query below and run it. Use the chart icon to pick
 a chart, then **Save** → **Add to dashboard**.
 
 Visits per day:
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | WHERE attributes.event.name == "page_view"
 | STATS visits = COUNT(*) BY day = DATE_TRUNC(1 day, @timestamp)
 | SORT day
@@ -157,19 +158,19 @@ FROM logs-legal_sakshya.otel-*
 
 Unique visitors per day:
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | STATS visitors = COUNT_DISTINCT(resource.attributes.user.id) BY day = DATE_TRUNC(1 day, @timestamp)
 | SORT day
 ```
 
 Visitors by country, and by state and city:
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | STATS visitors = COUNT_DISTINCT(resource.attributes.user.id) BY resource.attributes.client.geo.country_iso_code
 | SORT visitors DESC
 ```
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | STATS visitors = COUNT_DISTINCT(resource.attributes.user.id) BY resource.attributes.client.geo.region_name, resource.attributes.client.geo.city_name
 | SORT visitors DESC
 | LIMIT 50
@@ -177,50 +178,50 @@ FROM logs-legal_sakshya.otel-*
 
 Certificates started, by parts (both / A / B):
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | WHERE attributes.event.name == "certificate_started"
-| STATS started = COUNT(*) BY attributes.legal_sakshya.parts
+| STATS started = COUNT(*) BY attributes.legal_hashed.parts
 ```
 
 PDFs made, draft vs final and by parts:
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | WHERE attributes.event.name == "pdf_generated"
-| STATS pdfs = COUNT(*) BY attributes.legal_sakshya.kind, attributes.legal_sakshya.parts
+| STATS pdfs = COUNT(*) BY attributes.legal_hashed.kind, attributes.legal_hashed.parts
 ```
 
 PDFs downloaded or shared:
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | WHERE attributes.event.name == "pdf_downloaded"
-| STATS downloads = COUNT(*) BY attributes.legal_sakshya.kind, attributes.legal_sakshya.via
+| STATS downloads = COUNT(*) BY attributes.legal_hashed.kind, attributes.legal_hashed.via
 ```
 
 Evidence added, by file type:
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | WHERE attributes.event.name == "evidence_added"
-| STATS files = COUNT(*) BY attributes.legal_sakshya.file_kind
+| STATS files = COUNT(*) BY attributes.legal_hashed.file_kind
 | SORT files DESC
 ```
 
 Phone scans:
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | WHERE attributes.event.name == "device_scan"
-| STATS scans = COUNT(*) BY attributes.legal_sakshya.model_found, attributes.legal_sakshya.serial_found
+| STATS scans = COUNT(*) BY attributes.legal_hashed.model_found, attributes.legal_hashed.serial_found
 ```
 
 Phones, tablets and computers; browsers and systems:
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | STATS visitors = COUNT_DISTINCT(resource.attributes.user.id) BY resource.attributes.device.type, resource.attributes.os.name, resource.attributes.browser.name
 | SORT visitors DESC
 ```
 
 Networks (internet providers):
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | STATS visitors = COUNT_DISTINCT(resource.attributes.user.id) BY resource.attributes.client.as.organization.name
 | SORT visitors DESC
 | LIMIT 20
@@ -228,17 +229,17 @@ FROM logs-legal_sakshya.otel-*
 
 Recent activity, with IP address and place:
 ```esql
-FROM logs-legal_sakshya.otel-*
-| KEEP @timestamp, attributes.event.name, attributes.url.path, attributes.legal_sakshya.parts, attributes.legal_sakshya.kind, resource.attributes.client.address, resource.attributes.client.geo.country_iso_code, resource.attributes.client.geo.region_name, resource.attributes.client.geo.city_name, resource.attributes.device.type, resource.attributes.browser.name, resource.attributes.user.id
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
+| KEEP @timestamp, attributes.event.name, attributes.url.path, attributes.legal_hashed.parts, attributes.legal_hashed.kind, resource.attributes.client.address, resource.attributes.client.geo.country_iso_code, resource.attributes.client.geo.region_name, resource.attributes.client.geo.city_name, resource.attributes.device.type, resource.attributes.browser.name, resource.attributes.user.id
 | SORT @timestamp DESC
 | LIMIT 200
 ```
 
 App errors (the kind of error only):
 ```esql
-FROM logs-legal_sakshya.otel-*
+FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | WHERE attributes.event.name == "app_error"
-| STATS errors = COUNT(*) BY attributes.legal_sakshya.error_type, attributes.url.path
+| STATS errors = COUNT(*) BY attributes.legal_hashed.error_type, attributes.url.path
 ```
 
 **Map of countries:** Kibana → **Maps** → **Add layer** → **Choropleth** → boundaries **World Countries**, join field
@@ -247,6 +248,20 @@ FROM logs-legal_sakshya.otel-*
 
 If a field name in a query isn't found, open **Discover** with the *Legal Hashed usage* data view and copy the field
 name exactly as your Kibana shows it.
+
+## After the rename from Legal Sakshya
+
+The app, its worker and its data in Elastic used to be called Legal Sakshya (`legal_sakshya`, `legal-sakshya`). New
+statistics now go to `logs-legal_hashed.otel-default`. To finish the move in Elastic, once:
+
+1. **Retention:** create a new setup key (step 3; it now names `logs-legal_hashed.otel-*`), update the
+   `ELASTIC_SETUP_API_KEY` secret and run **Set up Elastic retention** again.
+2. **Dashboard:** import [`kibana/legal-hashed-dashboard.ndjson`](kibana/legal-hashed-dashboard.ndjson) (step 4). Then in
+   **Stack Management** → **Saved objects**, search for `Legal Sakshya`, tick the old dashboard, data view,
+   visualizations and map, and **Delete** them.
+
+Statistics collected before the rename stay in `logs-legal_sakshya.otel-default` and are still counted by the new
+dashboard and the queries below; that stream keeps its own 365-day retention.
 
 ## 5. Moving to another Elastic deployment
 
@@ -263,13 +278,13 @@ stream lifecycle instead of an ILM policy.
 | Event (`event.name`) | When | Attributes |
 |---|---|---|
 | `page_view` | Any page is shown | `url.path` |
-| `certificate_started` | "Start" on a new certificate | `legal_sakshya.parts`: both, A or B |
-| `evidence_added` | A file is added | `legal_sakshya.file_kind`: image, audio, video, document, whatsapp_export, email or other |
-| `pdf_generated` | A draft or final PDF is made | `legal_sakshya.kind`: draft or final, `legal_sakshya.parts` |
-| `pdf_downloaded` | A PDF is downloaded or shared | `legal_sakshya.kind`, `legal_sakshya.parts`, `legal_sakshya.via`: download or share |
-| `device_scan` | Phone details are filled in from a photo | `legal_sakshya.imei_count`, `legal_sakshya.serial_found`, `legal_sakshya.model_found` (no values) |
+| `certificate_started` | "Start" on a new certificate | `legal_hashed.parts`: both, A or B |
+| `evidence_added` | A file is added | `legal_hashed.file_kind`: image, audio, video, document, whatsapp_export, email or other |
+| `pdf_generated` | A draft or final PDF is made | `legal_hashed.kind`: draft or final, `legal_hashed.parts` |
+| `pdf_downloaded` | A PDF is downloaded or shared | `legal_hashed.kind`, `legal_hashed.parts`, `legal_hashed.via`: download or share |
+| `device_scan` | Phone details are filled in from a photo | `legal_hashed.imei_count`, `legal_hashed.serial_found`, `legal_hashed.model_found` (no values) |
 | `app_installed` | The app is installed from the browser | — |
-| `app_error` | A JavaScript error in the app | `legal_sakshya.error_type` (e.g. TypeError; never the message) |
+| `app_error` | A JavaScript error in the app | `legal_hashed.error_type` (e.g. TypeError; never the message) |
 
 Every batch also carries (as resource attributes) `service.name`, `service.version`, a random visitor ID kept in the
 browser (`user.id`), `user_agent.original`, `browser.name`, `os.name`, `device.type`, `browser.language` and
