@@ -1,4 +1,4 @@
-// Builds the Kibana saved objects for the "Legal Sakshya usage" dashboard (a data view, visualizations, a map and
+// Builds the Kibana saved objects for the "Legal Hashed usage" dashboard (a data view, visualizations, a map and
 // the dashboard) as NDJSON, for Stack Management → Saved objects → Import.
 //
 //   node telemetry/kibana/build-dashboard.mjs > telemetry/kibana/legal-sakshya-dashboard.ndjson
@@ -7,6 +7,7 @@
 // resource.attributes.*, log attributes under attributes.*, the visitor's location as the geo_point
 // resource.attributes.client.geo.location.
 
+// Object ids keep the app's first name (legal-sakshya), so importing again replaces the objects already in Kibana.
 const DATA_VIEW = 'legal-sakshya-usage';
 const IP = 'resource.attributes.client.address';
 const COUNTRY = 'resource.attributes.client.geo.country_iso_code';
@@ -85,7 +86,7 @@ const dataView = {
   id: DATA_VIEW,
   attributes: {
     title: 'logs-legal_sakshya.otel-*',
-    name: 'Legal Sakshya usage',
+    name: 'Legal Hashed usage',
     timeFieldName: '@timestamp',
     allowNoIndex: true,
     runtimeFieldMap: JSON.stringify({
@@ -305,7 +306,7 @@ const dashboard = {
   type: 'dashboard',
   id: 'legal-sakshya-dashboard',
   attributes: {
-    title: 'Legal Sakshya usage',
+    title: 'Legal Hashed usage',
     description: 'Visitors, unique IP addresses, where they are and when they visit. Data: logs-legal_sakshya.otel-*.',
     timeRestore: true,
     timeFrom: 'now-30d',

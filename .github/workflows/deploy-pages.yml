@@ -25,7 +25,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test --if-present
-      # base_path is "" once the custom domain (legalsakshya.com) is set in Settings → Pages,
+      # base_path is "" once the custom domain (legalhashed.com) is set in Settings → Pages,
       # and "/<repo-name>" while the site is served from novadibyne.github.io/<repo-name>/.
       - id: pages
         uses: actions/configure-pages@v5
@@ -36,6 +36,9 @@ jobs:
           # them off, set the repository variable TELEMETRY_URL (Settings → Secrets and variables → Actions → Variables).
           NEXT_PUBLIC_TELEMETRY_URL: ${{ vars.TELEMETRY_URL }}
           NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
+          # Search engine ownership checks (README → Search engines). Empty means none.
+          NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+          NEXT_PUBLIC_BING_SITE_VERIFICATION: ${{ vars.BING_SITE_VERIFICATION }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: out

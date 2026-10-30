@@ -1,6 +1,6 @@
 # Usage statistics with Elastic
 
-Legal Sakshya reports **how it is used** to Elastic: visits, unique visitors, certificates started, files added,
+Legal Hashed reports **how it is used** to Elastic: visits, unique visitors, certificates started, files added,
 PDFs made and downloaded, phone scans, app installs and app errors. Each visitor's **IP address, country, state and
 city, network, browser, operating system and device type** come with them. You look at it in **Kibana**.
 
@@ -17,7 +17,7 @@ Website (browser) ──OTLP/JSON logs──▶ Cloudflare Worker ──▶ Elas
 
 - **The website** batches events and posts them as OpenTelemetry logs to
   `https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs`. The address is set in `lib/config.ts`.
-- **The worker** ([`worker/worker.js`](worker/worker.js)) only accepts requests from legalsakshya.com and caps their
+- **The worker** ([`worker/worker.js`](worker/worker.js)) only accepts requests from legalhashed.com (and the app's first address, legalsakshya.com) and caps their
   size. It adds the visitor's IP address and location, which Cloudflare knows and Elastic would otherwise never see,
   converts the logs to OTLP protobuf (the encoding Elastic reads) and forwards them to Elastic with the API key. The
   key never reaches the browser.
@@ -80,7 +80,7 @@ legalsakshya-telemetry → **Logs**). Each failed request shows `503` (a setting
 Or check from a Mac or Linux terminal. You should see `204`:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" -X POST https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs -H "Origin: https://legalsakshya.com" -H "Content-Type: application/json" --data '{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"legal-sakshya"}},{"key":"data_stream.dataset","value":{"stringValue":"legal_sakshya"}}]},"scopeLogs":[{"logRecords":[{"body":{"stringValue":"setup_check"},"attributes":[{"key":"event.name","value":{"stringValue":"setup_check"}}]}]}]}]}'
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs -H "Origin: https://legalhashed.com" -H "Content-Type: application/json" --data '{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"legal-sakshya"}},{"key":"data_stream.dataset","value":{"stringValue":"legal_sakshya"}}]},"scopeLogs":[{"logRecords":[{"body":{"stringValue":"setup_check"},"attributes":[{"key":"event.name","value":{"stringValue":"setup_check"}}]}]}]}]}'
 ```
 
 `403` means the Origin isn't allowed, `503` means a setting is missing, and `502` means Elastic refused it. The
@@ -127,7 +127,7 @@ It can run before or after the first events arrive.
 [`kibana/legal-sakshya-dashboard.ndjson`](kibana/legal-sakshya-dashboard.ndjson) (on GitHub: open it, then
 **Download raw file**). In Kibana open **Stack Management** → **Saved objects** → **Import**, choose the file, keep
 *Check for existing objects* → *Automatically overwrite conflicts*, and click **Import**. Then open **Dashboards** →
-**Legal Sakshya usage**.
+**Legal Hashed usage**.
 
 | Panel | Shows |
 |---|---|
@@ -139,7 +139,7 @@ It can run before or after the first events arrive.
 | Visits and unique IPs per day | Daily trend |
 
 Click any IP, country, city or map circle to filter the whole dashboard to it. The import also adds the data view
-*Legal Sakshya usage* (`logs-legal_sakshya.otel-*`). It works on Elastic Cloud 9.0 and later, and was tested on
+*Legal Hashed usage* (`logs-legal_sakshya.otel-*`). It works on Elastic Cloud 9.0 and later, and was tested on
 Kibana 9.0.8 and 9.5.5 with data sent through the worker. The dashboard is built by
 [`kibana/build-dashboard.mjs`](kibana/build-dashboard.mjs): change it there, run
 `node telemetry/kibana/build-dashboard.mjs > telemetry/kibana/legal-sakshya-dashboard.ndjson`, and import again.
@@ -242,10 +242,10 @@ FROM logs-legal_sakshya.otel-*
 ```
 
 **Map of countries:** Kibana → **Maps** → **Add layer** → **Choropleth** → boundaries **World Countries**, join field
-**ISO 3166-1 alpha-2 code** → data view *Legal Sakshya usage*, term field
+**ISO 3166-1 alpha-2 code** → data view *Legal Hashed usage*, term field
 `resource.attributes.client.geo.country_iso_code`. Save it to the same dashboard.
 
-If a field name in a query isn't found, open **Discover** with the *Legal Sakshya usage* data view and copy the field
+If a field name in a query isn't found, open **Discover** with the *Legal Hashed usage* data view and copy the field
 name exactly as your Kibana shows it.
 
 ## 5. Moving to another Elastic deployment

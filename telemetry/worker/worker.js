@@ -1,4 +1,4 @@
-// Legal Sakshya telemetry proxy (Cloudflare Worker).
+// Legal Hashed telemetry proxy (Cloudflare Worker).
 //
 // The website sends usage statistics here as OpenTelemetry (OTLP/HTTP) logs. This worker checks where they come
 // from, adds the visitor's IP address and location (which Cloudflare knows and Elastic otherwise wouldn't see),
@@ -11,7 +11,10 @@
 // Open https://<worker address>/status to check the settings and the connection to Elastic.
 // Deploying and testing: telemetry/README.md.
 
+// legalhashed.com, and the app's first address while visitors move over.
 const ALLOWED_ORIGINS = new Set([
+  "https://legalhashed.com",
+  "https://www.legalhashed.com",
   "https://legalsakshya.com",
   "https://www.legalsakshya.com"
 ]);

@@ -9,17 +9,40 @@ import { SiteFooter } from '@/components/site-footer';
 import { ServiceWorker } from '@/components/offline';
 import { AppToaster } from '@/components/app-toaster';
 import { Telemetry } from '@/components/telemetry';
-import { APP_NAME, APP_TAGLINE, SITE_URL, TELEMETRY_URL, assetPath } from '@/lib/config';
+import { JsonLd } from '@/components/json-ld';
+import { APP_NAME, SITE_URL, TELEMETRY_URL, assetPath } from '@/lib/config';
+import { OG_IMAGE, SEO_DESCRIPTION, SEO_KEYWORDS, SEO_TITLE, SITE_JSON_LD } from '@/lib/seo';
 
+// Search Console and Bing Webmaster Tools ownership checks: the repository variables GOOGLE_SITE_VERIFICATION and
+// BING_SITE_VERIFICATION (the code from their "HTML tag" option), passed in by the deploy workflow.
+const GOOGLE_VERIFICATION = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+const BING_VERIFICATION = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim();
+
+// Defaults for every page; each public page sets its own title, description and canonical address (lib/seo.ts).
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: `${APP_NAME} · ${APP_TAGLINE}`, template: `%s · ${APP_NAME}` },
-  description:
-    'Hash electronic evidence and draft the Section 63(4)(c) BSA certificate (Part A, Part B and Hash Report) entirely in your browser. Files are never uploaded.',
-  icons: { icon: assetPath('favicon.svg'), apple: assetPath('icons/apple-touch-icon.png') },
+  title: { default: SEO_TITLE, template: `%s | ${APP_NAME}` },
+  description: SEO_DESCRIPTION,
+  keywords: SEO_KEYWORDS,
+  applicationName: APP_NAME,
+  category: 'legal',
+  robots: { index: true, follow: true },
+  openGraph: { type: 'website', siteName: APP_NAME, locale: 'en_IN', title: SEO_TITLE, description: SEO_DESCRIPTION, images: [OG_IMAGE] },
+  twitter: { card: 'summary_large_image', title: SEO_TITLE, description: SEO_DESCRIPTION, images: [OG_IMAGE.url] },
+  icons: {
+    icon: [
+      { url: assetPath('favicon.ico'), sizes: '16x16 32x32 48x48' },
+      { url: assetPath('favicon.svg'), type: 'image/svg+xml' },
+    ],
+    apple: assetPath('icons/apple-touch-icon.png'),
+  },
   // iPhone: open full screen, with its own name, when added to the Home Screen.
   appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: 'default' },
   formatDetection: { telephone: false },
+  verification: {
+    ...(GOOGLE_VERIFICATION ? { google: GOOGLE_VERIFICATION } : {}),
+    ...(BING_VERIFICATION ? { other: { 'msvalidate.01': BING_VERIFICATION } } : {}),
+  },
 };
 
 export const viewport: Viewport = { themeColor: '#0d1b3e', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
@@ -45,7 +68,12 @@ const CSP = [
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IN">
-      <head>{process.env.NODE_ENV === 'production' && <meta httpEquiv="Content-Security-Policy" content={CSP} />}</head>
+      <head>
+        {process.env.NODE_ENV === 'production' && <meta httpEquiv="Content-Security-Policy" content={CSP} />}
+        {SITE_JSON_LD.map((data) => (
+          <JsonLd key={data['@type']} data={data} />
+        ))}
+      </head>
       <body className="flex min-h-dvh flex-col">
         <SiteHeader />
         <main className="flex-1">{children}</main>

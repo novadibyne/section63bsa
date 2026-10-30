@@ -38,8 +38,8 @@ test('evidence → certificate → finalised PDF, with nothing uploaded', async 
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Section 63 certificate');
   // The contact email: a box at the end of Home, and the footer of every page.
-  await expect(page.locator('#contact').getByTestId('contact-email')).toHaveAttribute('href', /^mailto:legalsakshya\.bsa@gmail\.com\?/);
-  await expect(page.getByTestId('footer-contact')).toContainText('legalsakshya.bsa@gmail.com');
+  await expect(page.locator('#contact').getByTestId('contact-email')).toHaveAttribute('href', /^mailto:legalhashed@gmail\.com\?/);
+  await expect(page.getByTestId('footer-contact')).toContainText('legalhashed@gmail.com');
   await snap('01-dashboard');
 
   await page.getByTestId('start').click();

@@ -1,12 +1,18 @@
 import { BookOpenText, Plus, Scale } from 'lucide-react';
 import { BARE_ACT_URL } from '@/lib/config';
+import { pageMetadata } from '@/lib/seo';
 import { SECTION_63_4, SECTION_63_GUIDE } from '@/lib/legal/section-63';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { ButtonLink } from '@/components/ui/button';
 import { Callout, PageHeader } from '@/components/ui/misc';
 import { CertificateTimeline, WhatItMeans } from '@/components/why-timeline';
 
-export const metadata = { title: 'Why the certificate matters' };
+export const metadata = pageMetadata({
+  title: 'Why the Section 63 BSA certificate matters (formerly Section 65B)',
+  description:
+    'Why courts need a certificate for electronic evidence: from Section 65B of the Evidence Act and Arjun Panditrao Khotkar (2020) to Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 and its Schedule.',
+  path: '/why/',
+});
 
 export default function WhyPage() {
   return (

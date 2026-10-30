@@ -373,7 +373,7 @@ lib/billing/    (empty placeholder, Phase 2)
 ### 3.13 Environment variables (Phase 1)
 ```
 NEXT_PUBLIC_BASE_PATH=            # "" for a custom domain or AWS root; "/<repo-name>" for GitHub Pages project sites
-NEXT_PUBLIC_APP_NAME="Legal Sakshya"   # optional; the default is set in lib/config.ts
+NEXT_PUBLIC_APP_NAME="Legal Hashed"   # optional; the default is set in lib/config.ts
 ```
 
 ### 3.14 Additions after Phase 1
@@ -388,7 +388,7 @@ Agreed with the project owner in October 2026. All of them keep rule 7: nothing 
 | 5 | **Privacy shown everywhere** | A bar on every page reads "100% on-device · 100% safe · Nothing you add ever leaves this device" and links to `/privacy/`. That page explains how to check the claim with airplane mode, and where the data is kept. |
 | 6 | **Works offline** | `scripts/build-sw.mjs` (run after `build`) writes `out/sw.js`. It precaches pages, scripts and styles, and saves fonts, icons and the scan engines on first use. It only ever reads files from this site. Only content-hashed files (`_next/static/`) are served cache-first; pages, their data files (`index.txt`), the manifest and the scan engines always come from the server first (`no-cache`), with the saved copy used only offline, so a page never mixes two versions. A new version takes over at once (`skipWaiting` + `clients.claim`), keeps the previous version's cache for pages opened just before, and open pages reload once onto it. A navigation to a raw `…/index.txt` (Next.js's fallback when page data doesn't match) is redirected to the page. |
 | 7 | **My certificates (history)** | `/history/` lists every certificate version in the browser, newest first, searchable by title, court or case number. "Download PDF" returns the stored final PDF unchanged; for a draft it rebuilds the draft from the latest details. |
-| 8 | **Name and domain** | The app is called **Legal Sakshya** and served at `https://legalsakshya.com`. The IndexedDB name, the case-bundle format ID and the audit lock name stay `section63bsa` so existing data and bundles keep working. |
+| 8 | **Name and domain** | The app is called **Legal Hashed** and served at `https://legalhashed.com`. The IndexedDB name, the case-bundle format ID and the audit lock name stay `section63bsa` so existing data and bundles keep working. |
 | 9 | **Licences** | Only open-source libraries with permissive licences may be shipped. `npm run licenses` writes `THIRD_PARTY_LICENSES.md` from the build's source maps and the dependency tree. Its `--check` flag fails on anything that isn't permissive. |
 
 ### 3.15 Second round of additions (October 2026)
@@ -407,14 +407,22 @@ Agreed with the project owner in October 2026. All of them keep rule 7: nothing 
 | Point | What the app does |
 |---|---|
 | **Why** | The owner wants to know how many people use the site, from where, and how many PDFs are made. |
-| **How** | The browser batches events and posts them as **OpenTelemetry logs (OTLP/HTTP JSON)** to a Cloudflare Worker, `https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs` (`lib/config.ts`; the repository variable `TELEMETRY_URL` overrides it, and `off` disables statistics). The worker (`telemetry/worker/worker.js`) accepts only legalsakshya.com origins, the OTLP paths and bodies up to 64 KiB, with an optional rate limit. It adds the visitor's IP and location from Cloudflare (`client.address`, `client.geo.*`, `client.as.*`, replacing any the browser sent) converts the logs to OTLP/protobuf (the encoding Elastic reads; byte-checked against the OpenTelemetry encoder) and forwards them to Elastic's Managed OTLP Endpoint with an API key that only the worker holds. `GET /status` reports which settings the worker sees (names only) and whether Elastic accepts them; failures are logged in the worker's logs, never sent to the browser. Elastic stores them in `logs-legal_sakshya.otel-default` (resource attribute `data_stream.dataset`). |
+| **How** | The browser batches events and posts them as **OpenTelemetry logs (OTLP/HTTP JSON)** to a Cloudflare Worker, `https://legalsakshya-telemetry.novadibyne.workers.dev/v1/logs` (`lib/config.ts`; the repository variable `TELEMETRY_URL` overrides it, and `off` disables statistics). The worker (`telemetry/worker/worker.js`) accepts only legalhashed.com origins, the OTLP paths and bodies up to 64 KiB, with an optional rate limit. It adds the visitor's IP and location from Cloudflare (`client.address`, `client.geo.*`, `client.as.*`, replacing any the browser sent) converts the logs to OTLP/protobuf (the encoding Elastic reads; byte-checked against the OpenTelemetry encoder) and forwards them to Elastic's Managed OTLP Endpoint with an API key that only the worker holds. `GET /status` reports which settings the worker sees (names only) and whether Elastic accepts them; failures are logged in the worker's logs, never sent to the browser. Elastic stores them in `logs-legal_sakshya.otel-default` (resource attribute `data_stream.dataset`). |
 | **Events** | `page_view`, `certificate_started`, `evidence_added`, `pdf_generated`, `pdf_downloaded`, `device_scan`, `app_installed`, `app_error` (error type only). Labels are limited to an allow-list in `lib/telemetry.ts` and sent as `url.path` and `legal_sakshya.*` attributes. Resource attributes: `service.*`, a random visitor ID (`user.id`), user agent, browser, OS, device type, language and installed flag. |
 | **Never sent** | Evidence, file names, hashes, names, addresses, IMEI and serial numbers, case numbers, PDF contents, error messages. An e2e test types these into the app and fails if any appears in the outgoing payload. |
 | **Retention** | 365 days. `telemetry/setup-retention.mjs`, run by the manual workflow "Set up Elastic retention", adds an ILM policy (or a data stream lifecycle on serverless) and an index template for `logs-legal_sakshya.otel-*` only, copied from the template Elastic would otherwise use. |
 | **Privacy wording** | Rule 7's notice is now "Your evidence stays on your device · Files and details you add are never uploaded · Safe and private". The CSP's `connect-src` adds only the worker's origin. The Privacy page lists what is collected and for how long. Under India's DPDP Act an IP address can be personal data, so have the notice reviewed before relying on it. |
-| **Kibana** | `telemetry/kibana/legal-sakshya-dashboard.ndjson` (built by `build-dashboard.mjs`, imported in Saved objects) adds the data view and the "Legal Sakshya usage" dashboard: totals, a side table of IP addresses with country, city, visits, PDFs and last seen, a map (heat map plus unique IPs per place, on `resource.attributes.client.geo.location`), a day × hour heatmap in IST (data view runtime fields), and charts by country, state and day. Saved object versions are Kibana 9.0's so 9.0 and later can import it. ES\|QL queries in `telemetry/README.md` for anything else. |
+| **Kibana** | `telemetry/kibana/legal-sakshya-dashboard.ndjson` (built by `build-dashboard.mjs`, imported in Saved objects) adds the data view and the "Legal Hashed usage" dashboard: totals, a side table of IP addresses with country, city, visits, PDFs and last seen, a map (heat map plus unique IPs per place, on `resource.attributes.client.geo.location`), a day × hour heatmap in IST (data view runtime fields), and charts by country, state and day. Saved object versions are Kibana 9.0's so 9.0 and later can import it. ES\|QL queries in `telemetry/README.md` for anything else. |
 
 ---
+
+### 3.17 New name, logo and search engines (October 2026)
+
+| # | Change | What the app does |
+|---|---|---|
+| 1 | **Legal Hashed at legalhashed.com** | `APP_NAME`, `SITE_DOMAIN` and `CONTACT_EMAIL` (legalhashed@gmail.com) in `lib/config.ts`. Browser storage belongs to each address, so records made at legalsakshya.com stay there; they move with a case bundle. The statistics worker accepts both addresses, and the statistics keep their first names (`legal_sakshya`, `legal-sakshya`) so earlier data stays in one data stream. |
+| 2 | **Logo** | "#63", a hash of Section 63, over a green digest bar of hex blocks (`lib/brand.ts`, outlines from Plus Jakarta Sans ExtraBold so they look the same without the font). `npm run icons` (`scripts/build-icons.mjs`) draws `favicon.svg`, `favicon.ico`, the app and Apple icons, the maskable icon and the 1200 × 630 preview image. |
+| 3 | **Search engines** | Titles, descriptions, canonical addresses, Open Graph and Twitter previews per public page (`lib/seo.ts`); `sitemap.xml` and `robots.txt`; schema.org `WebSite`, `Organization`, `WebApplication` and `FAQPage` data; a "Common questions" section on Home. Screens with a user's own records are `noindex`. Search Console and Bing verification codes come from the repository variables `GOOGLE_SITE_VERIFICATION` and `BING_SITE_VERIFICATION`. |
 
 ## 4. Hosting
 
@@ -485,9 +493,9 @@ All three serve the same `out/` folder. In Phase 1 no evidence is stored on the 
            uses: actions/deploy-pages@v4
    ```
 4. Commit and push. Watch the run in the **Actions** tab. The site goes live at `https://novadibyne.github.io/section63bsa/`.
-5. **Custom domain (`legalsakshya.com`):**
+5. **Custom domain (`legalhashed.com`):**
    1. At the registrar, add four `A` records for `@` pointing to `185.199.108.153`, `185.199.109.153`, `185.199.110.153` and `185.199.111.153`, and a `CNAME` record `www` → `novadibyne.github.io`.
-   2. Go to **Settings → Pages → Custom domain**, enter `legalsakshya.com` and save. Tick **Enforce HTTPS** when the DNS check passes.
+   2. Go to **Settings → Pages → Custom domain**, enter `legalhashed.com` and save. Tick **Enforce HTTPS** when the DNS check passes.
    3. Re-run the deploy workflow. It takes `NEXT_PUBLIC_BASE_PATH` from `actions/configure-pages`, which returns an empty base path once a custom domain is set, so no workflow edit is needed.
 6. GitHub Pages can't set custom HTTP headers, so the Content-Security-Policy goes in a `<meta>` tag in `app/layout.tsx` (rule 7 in 3.2). Start from this and loosen only what a library actually needs:
    `default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src blob:; object-src 'none'; base-uri 'self'; form-action 'none'`

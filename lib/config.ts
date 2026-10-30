@@ -1,6 +1,6 @@
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Legal Sakshya';
-export const APP_TAGLINE = 'Section 63 BSA certificate drafter';
-export const SITE_DOMAIN = 'legalsakshya.com';
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Legal Hashed';
+export const APP_TAGLINE = 'Section 63 BSA certificate generator';
+export const SITE_DOMAIN = 'legalhashed.com';
 export const SITE_URL = `https://${SITE_DOMAIN}`;
 export const HASH_WASM_VERSION = process.env.NEXT_PUBLIC_HASH_WASM_VERSION || 'unknown';
 
@@ -12,19 +12,21 @@ export const PRIVACY_DETAIL = 'Files and details you add are never uploaded · S
 export const PRIVACY_LINE = 'Your evidence and the details you enter never leave your device.';
 
 /**
- * Usage statistics: OpenTelemetry logs sent to the Legal Sakshya telemetry worker (telemetry/worker/), which adds
+ * Usage statistics: OpenTelemetry logs sent to the telemetry worker (telemetry/worker/), which adds
  * the visitor's IP address and location and forwards them to Elastic. NEXT_PUBLIC_TELEMETRY_URL (the GitHub
  * repository variable TELEMETRY_URL) points them at another worker, or turns them off when set to "off".
  */
 const DEFAULT_TELEMETRY_URL = 'https://legalsakshya-telemetry.novadibyne.workers.dev';
 const telemetrySetting = process.env.NEXT_PUBLIC_TELEMETRY_URL?.trim();
 export const TELEMETRY_URL = telemetrySetting === 'off' ? '' : (telemetrySetting || DEFAULT_TELEMETRY_URL).replace(/\/+$/, '');
+// The worker address and the names below keep the app's first name, so statistics collected before the move to
+// legalhashed.com stay in the same Elastic data stream.
 export const TELEMETRY_SERVICE_NAME = 'legal-sakshya';
 /** How long Elastic keeps usage statistics; shown on the Privacy page and set by telemetry/setup-retention.mjs. */
 export const STATS_RETENTION_DAYS = 365;
 
 /** Where people write with questions, feedback or privacy requests. Shown in the footer and on Home, Privacy and Settings. */
-export const CONTACT_EMAIL = 'legalsakshya.bsa@gmail.com';
+export const CONTACT_EMAIL = 'legalhashed@gmail.com';
 
 /** Academic context shown in the footer and Settings › About. */
 export const AFFILIATION = 'Government Law College, Thiruvananthapuram';

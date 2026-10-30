@@ -1,4 +1,4 @@
-// Keeps Legal Sakshya usage statistics in Elastic for 365 days, then deletes them. Touches nothing else.
+// Keeps Legal Hashed usage statistics in Elastic for 365 days, then deletes them. Touches nothing else.
 //
 // Usage statistics arrive (through the telemetry worker) in the data stream logs-legal_sakshya.otel-default.
 // This script finds the index template Elastic would use for it, adds a Legal Sakshya copy of that template with

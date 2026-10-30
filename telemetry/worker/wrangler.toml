@@ -1,4 +1,4 @@
-# Cloudflare Worker for Legal Sakshya usage statistics. Deploy from this folder with: npx wrangler deploy
+# Cloudflare Worker for Legal Hashed usage statistics (named after the app's first name, legalsakshya). Deploy from this folder with: npx wrangler deploy
 # Then set the two settings (see telemetry/README.md):
 #   npx wrangler secret put ELASTIC_API_KEY          # paste: ApiKey <encoded key>
 #   npx wrangler secret put ELASTIC_OTLP_ENDPOINT    # paste: https://<your managed OTLP endpoint>

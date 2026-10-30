@@ -1,6 +1,9 @@
 import { Compass } from 'lucide-react';
 import { ButtonLink } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/misc';
+import { pageMetadata } from '@/lib/seo';
+
+export const metadata = pageMetadata({ title: 'Page not found', path: '/404/', index: false });
 
 export default function NotFound() {
   return (

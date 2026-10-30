@@ -1,10 +1,16 @@
 import { Ban, BarChart3, Camera, Cpu, FileLock2, HardDrive, Plane, ServerOff, ShieldCheck } from 'lucide-react';
 import { APP_NAME, PRIVACY_BADGE, PRIVACY_LINE, STATS_RETENTION_DAYS, TELEMETRY_URL } from '@/lib/config';
+import { pageMetadata } from '@/lib/seo';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { OfflineStatus } from '@/components/offline';
 import { ContactCard } from '@/components/contact';
 
-export const metadata = { title: 'Privacy' };
+export const metadata = pageMetadata({
+  title: 'Privacy: your evidence never leaves your device',
+  description:
+    'Evidence files, photos and the details you enter are processed and kept in your browser and never uploaded. What usage statistics are collected, and for how long.',
+  path: '/privacy/',
+});
 
 /** Usage statistics are on unless the site is built with NEXT_PUBLIC_TELEMETRY_URL=off (see lib/telemetry.ts). */
 const STATS_ON = !!TELEMETRY_URL;

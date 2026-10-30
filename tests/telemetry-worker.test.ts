@@ -30,7 +30,7 @@ function otlp(extraResourceAttrs: object[] = []) {
 
 function request(path: string, init: RequestInit & { origin?: string | null } = {}) {
   const headers = new Headers(init.headers);
-  if (init.origin !== null) headers.set('Origin', init.origin ?? 'https://legalsakshya.com');
+  if (init.origin !== null) headers.set('Origin', init.origin ?? 'https://legalhashed.com');
   headers.set('CF-Connecting-IP', '203.0.113.7');
   const req = new Request(`https://legalsakshya-telemetry.novadibyne.workers.dev${path}`, { ...init, headers });
   Object.defineProperty(req, 'cf', { value: CF });
@@ -50,7 +50,10 @@ describe('telemetry worker', () => {
   it('answers the browser’s CORS check for its own site only', async () => {
     const res = await worker.fetch(request('/v1/logs', { method: 'OPTIONS' }), ENV);
     expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://legalsakshya.com');
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://legalhashed.com');
+    // The app's first address still works while visitors move over.
+    const old = await worker.fetch(request('/v1/logs', { method: 'OPTIONS', origin: 'https://legalsakshya.com' }), ENV);
+    expect(old.headers.get('Access-Control-Allow-Origin')).toBe('https://legalsakshya.com');
   });
 
   it('rejects unknown paths, query strings, other methods, types and oversized bodies', async () => {

@@ -1,6 +1,6 @@
-# Legal Sakshya
+# Legal Hashed
 
-**https://legalsakshya.com**
+**https://legalhashed.com**
 
 A web app for preparing **draft certificates for electronic evidence** under **Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 (BSA)**.
 
@@ -117,7 +117,7 @@ Every push to `main` is deployed to **GitHub Pages** by `.github/workflows/deplo
 
 One-time setup: in the repo, go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
 
-### Custom domain: legalsakshya.com
+### Custom domain: legalhashed.com
 
 1. **At the domain registrar**, add these DNS records:
 
@@ -130,9 +130,38 @@ One-time setup: in the repo, go to **Settings → Pages → Build and deployment
    | AAAA (optional) | `@` | `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153` |
    | CNAME | `www` | `novadibyne.github.io` |
 
-2. **In GitHub**, go to the repo's **Settings → Pages → Custom domain**, enter `legalsakshya.com` and save. When the DNS check passes, tick **Enforce HTTPS**.
+2. **In GitHub**, go to the repo's **Settings → Pages → Custom domain**, enter `legalhashed.com` and save. When the DNS check passes, tick **Enforce HTTPS**.
 3. **Run the deploy again**: **Actions → Deploy to GitHub Pages → Run workflow**. The site is then built for the domain root.
 4. Recommended: verify the domain under your GitHub account's **Settings → Pages → Add a domain**, so no one else can point it at their own Pages site.
+
+**Moving from legalsakshya.com.** The app was first published at legalsakshya.com. Browsers keep each site's data
+separately, so certificates saved on legalsakshya.com do not appear on legalhashed.com. Anyone who needs them can open
+the old address while it still works, export a case bundle from each record and import it in Settings on the new one.
+Point legalsakshya.com at legalhashed.com with a permanent (301) redirect at the registrar, so links and search results
+carry over. The statistics worker accepts both addresses.
+
+### Search engines
+
+The site is set up to be found for searches such as "Section 63 BSA certificate":
+
+- every public page has its own title, description and canonical address, and a preview image for links shared on
+  WhatsApp, LinkedIn or X (`lib/seo.ts`, `public/og-image.png`);
+- `sitemap.xml` lists the public pages and `robots.txt` points to it; the screens with a user's own records are marked
+  `noindex`;
+- structured data (schema.org) describes the site, the free web app and the common questions answered on Home.
+
+To get it listed sooner:
+
+1. Add `https://legalhashed.com` as a property in [Google Search Console](https://search.google.com/search-console)
+   and choose the **HTML tag** check. Copy the `content` value into a repository variable named
+   `GOOGLE_SITE_VERIFICATION` (**Settings → Secrets and variables → Actions → Variables**) and run the deploy again,
+   then click **Verify**.
+2. In Search Console, open **Sitemaps** and submit `sitemap.xml`. Use **URL inspection → Request indexing** for the
+   home page.
+3. Do the same in [Bing Webmaster Tools](https://www.bing.com/webmasters) (it also feeds DuckDuckGo and Yahoo), with
+   the repository variable `BING_SITE_VERIFICATION`.
+
+The logo, favicon, app icons and preview image are drawn from `lib/brand.ts` by `npm run icons`.
 
 Steps for AWS Amplify and for S3 + CloudFront are in [Section 4 of the specification](docs/SPECIFICATION.md#4-hosting).
 
@@ -145,4 +174,4 @@ Steps for AWS Amplify and for S3 + CloudFront are in [Section 4 of the specifica
 
 ## Contact
 
-Questions, feedback or privacy requests: [legalsakshya.bsa@gmail.com](mailto:legalsakshya.bsa@gmail.com). The app shows this address in the footer of every page, at the end of Home, on the Privacy page and in Settings › About (`CONTACT_EMAIL` in `lib/config.ts`).
+Questions, feedback or privacy requests: [legalhashed@gmail.com](mailto:legalhashed@gmail.com). The app shows this address in the footer of every page, at the end of Home, on the Privacy page and in Settings › About (`CONTACT_EMAIL` in `lib/config.ts`).
