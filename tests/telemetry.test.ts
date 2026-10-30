@@ -21,7 +21,7 @@ describe('usage statistics never carry evidence details', () => {
   });
 
   it('cuts allowed strings short', () => {
-    expect(cleanLabels({ path: `/${'x'.repeat(100)}` }).path).toHaveLength(40);
+    expect(cleanLabels({ path: `/${'x'.repeat(100)}` }).path).toHaveLength(64);
   });
 
   it('does nothing when statistics are off', () => {

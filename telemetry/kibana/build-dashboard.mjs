@@ -18,9 +18,14 @@ const HOUR = 'visit.hour_ist';
 const WEEKDAY = 'visit.weekday_ist';
 const WEEKDAY_NUMBER = 'visit.weekday_number_ist';
 
+// What kind of certificate each PDF is (lib/legal/certificate-summary.ts in the app).
+const label = (name) => `attributes.legal_hashed.${name}`;
+
 const kql = (query) => ({ query, language: 'kuery' });
 const PAGE_VIEW = kql(`${EVENT} : "page_view"`);
 const PDF = kql(`${EVENT} : "pdf_generated"`);
+// Drafts can be made many times; a certificate is counted once, when it is finalised.
+const FINAL = kql(`${EVENT} : "pdf_generated" and ${label('kind')} : "final"`);
 
 /* Lens columns */
 const uniqueIps = (label = 'Unique IP addresses') => ({
@@ -49,7 +54,7 @@ const perDay = () => ({
   params: { interval: '1d', includeEmptyRows: true, dropPartials: false },
 });
 
-function lens(id, title, visualizationType, columns, visualization, description = '') {
+function lens(id, title, visualizationType, columns, visualization, description = '', query = kql('')) {
   const layerId = 'layer1';
   return {
     type: 'lens',
@@ -60,7 +65,7 @@ function lens(id, title, visualizationType, columns, visualization, description 
       visualizationType,
       state: {
         visualization: { layerId, layerType: 'data', ...visualization },
-        query: kql(''),
+        query,
         filters: [],
         datasourceStates: {
           formBased: { layers: { [layerId]: { columns, columnOrder: Object.keys(columns), incompleteColumns: {}, sampling: 1 } } },
@@ -76,7 +81,49 @@ function lens(id, title, visualizationType, columns, visualization, description 
 
 const metric = (id, title, column, extra = {}) => lens(id, title, 'lnsMetric', { value: column }, { metricAccessor: 'value', ...extra });
 
+/** Horizontal bars counting final certificates by one of their labels. */
+const certificateBars = (id, title, name, columnLabel, description) =>
+  lens(
+    id,
+    title,
+    'lnsXY',
+    { group: terms(columnLabel, label(name), 15, { type: 'column', columnId: 'certificates' }), certificates: count('Final certificates') },
+    {
+      preferredSeriesType: 'bar_horizontal',
+      legend: { isVisible: false, position: 'right' },
+      valueLabels: 'show',
+      layers: [{ layerId: 'layer1', layerType: 'data', seriesType: 'bar_horizontal', xAccessor: 'group', accessors: ['certificates'] }],
+      axisTitlesVisibilitySettings: { x: false, yLeft: false, yRight: false },
+    },
+    description,
+    FINAL,
+  );
+
 /* ───────── Saved objects ───────── */
+
+// The certificate labels, with the names Kibana shows for them.
+const CERTIFICATE_FIELDS = {
+  kind: 'Draft or final',
+  parts: 'Parts',
+  version: 'Version',
+  evidence_type: 'Kind of evidence',
+  file_count: 'Files',
+  file_kinds: 'Kinds of file',
+  archive_files: 'Files inside archives',
+  total_kb: 'Size (KB)',
+  device_count: 'Devices',
+  device_types: 'Kind of device',
+  device_makers: 'Device maker',
+  id_types: 'Device IDs given',
+  control: 'Part A: device held as',
+  court_type: 'Kind of court',
+  case_number_given: 'Case number given',
+  manner_given: 'Manner of production given',
+  acquisition_hash: 'Acquisition hash',
+  observations_annexure: 'Observations annexure',
+  observations_noted: 'Observations noted',
+  complete: 'All details filled in',
+};
 
 // Hour of day and day of week in Indian time, for the heatmap.
 const IST = "ZonedDateTime t = doc['@timestamp'].value.withZoneSameInstant(ZoneId.of('Asia/Kolkata'));";
@@ -111,6 +158,7 @@ const dataView = {
       [HOUR]: { customLabel: 'Hour (IST)' },
       [WEEKDAY]: { customLabel: 'Day (IST)' },
       [WEEKDAY_NUMBER]: { customLabel: 'Day number (IST)' },
+      ...Object.fromEntries(Object.entries(CERTIFICATE_FIELDS).map(([name, customLabel]) => [label(name), { customLabel }])),
     }),
     fields: '[]',
   },
@@ -210,7 +258,48 @@ const panels = [
       axisTitlesVisibilitySettings: { x: false, yLeft: false, yRight: false },
     },
   ),
+  certificateBars('legal-hashed-cert-parts', 'Certificates by part', 'parts', 'Parts', 'both = Part A and Part B; A or B = that part only.'),
+  certificateBars('legal-hashed-cert-evidence', 'Kind of evidence', 'evidence_type', 'Kind of evidence', 'The kind of the first file added to each record.'),
+  certificateBars('legal-hashed-cert-files', 'Kinds of file in a certificate', 'file_kinds', 'Kinds of file', 'Every kind of file in each certificate, e.g. image+whatsapp_export.'),
+  certificateBars('legal-hashed-cert-devices', 'Kind of device', 'device_types', 'Kind of device', 'The device boxes ticked in the Schedule.'),
+  certificateBars('legal-hashed-cert-makers', 'Device maker', 'device_makers', 'Device maker', 'The maker found in the make & model; other = not recognised, not_given = left blank.'),
+  certificateBars('legal-hashed-cert-courts', 'Kind of court', 'court_type', 'Kind of court', 'Worked out in the browser from the court name; the name itself is never sent.'),
+  certificateBars('legal-hashed-cert-control', 'Part A: how the device is held', 'control', 'Owned / maintained / managed / operated', 'The boxes ticked in Part A (certificates with Part A only).'),
+  lens(
+    'legal-hashed-cert-per-day',
+    'Certificates per day',
+    'lnsXY',
+    { day: perDay(), finals: count('Final certificates', FINAL), drafts: count('Draft PDFs', kql(`${EVENT} : "pdf_generated" and ${label('kind')} : "draft"`)) },
+    {
+      preferredSeriesType: 'bar',
+      legend: { isVisible: true, position: 'bottom' },
+      valueLabels: 'hide',
+      layers: [{ layerId: 'layer1', layerType: 'data', seriesType: 'bar', xAccessor: 'day', accessors: ['finals', 'drafts'] }],
+      axisTitlesVisibilitySettings: { x: false, yLeft: false, yRight: false },
+    },
+  ),
 ];
+
+// One row per final certificate, newest first.
+const certificates = {
+  type: 'search',
+  id: 'legal-hashed-certificates',
+  attributes: {
+    title: 'Certificates made',
+    description: 'Each final certificate: its parts and the kinds of evidence and device. No names, numbers or other text from the PDF.',
+    columns: [
+      'parts', 'evidence_type', 'file_kinds', 'file_count', 'device_types', 'device_makers', 'court_type', 'control', 'observations_annexure', 'complete', 'version',
+    ].map(label).concat(CITY, REGION),
+    sort: [['@timestamp', 'desc']],
+    grid: {},
+    hideChart: true,
+    isTextBasedQuery: false,
+    kibanaSavedObjectMeta: {
+      searchSourceJSON: JSON.stringify({ query: FINAL, filter: [], indexRefName: 'kibanaSavedObjectMeta.searchSourceJSON.index' }),
+    },
+  },
+  references: [{ name: 'kibanaSavedObjectMeta.searchSourceJSON.index', type: 'index-pattern', id: DATA_VIEW }],
+};
 
 const sizeByIps = { name: `cardinality_of_${IP}`, origin: 'source' };
 const map = {
@@ -290,7 +379,8 @@ const map = {
   ],
 };
 
-// 48-column grid. Left: tiles, map, heatmap and charts. Right: the IP table. [id, type, x, y, w, h, hide title]
+// 48-column grid. Left: tiles, map, heatmap and charts. Right: the IP table. Below: the certificates.
+// [id, type, x, y, w, h, hide title]
 const layout = [
   ['legal-hashed-unique-ips', 'lens', 0, 0, 10, 7, true],
   ['legal-hashed-visits', 'lens', 10, 0, 9, 7, true],
@@ -301,13 +391,23 @@ const layout = [
   ['legal-hashed-countries', 'lens', 0, 47, 16, 14],
   ['legal-hashed-states', 'lens', 16, 47, 16, 14],
   ['legal-hashed-per-day', 'lens', 32, 47, 16, 14],
+  // What the certificates were for.
+  ['legal-hashed-certificates', 'search', 0, 61, 48, 20],
+  ['legal-hashed-cert-parts', 'lens', 0, 81, 12, 13],
+  ['legal-hashed-cert-evidence', 'lens', 12, 81, 12, 13],
+  ['legal-hashed-cert-files', 'lens', 24, 81, 12, 13],
+  ['legal-hashed-cert-devices', 'lens', 36, 81, 12, 13],
+  ['legal-hashed-cert-makers', 'lens', 0, 94, 12, 13],
+  ['legal-hashed-cert-courts', 'lens', 12, 94, 12, 13],
+  ['legal-hashed-cert-control', 'lens', 24, 94, 12, 13],
+  ['legal-hashed-cert-per-day', 'lens', 36, 94, 12, 13],
 ];
 const dashboard = {
   type: 'dashboard',
   id: 'legal-hashed-dashboard',
   attributes: {
     title: 'Legal Hashed usage',
-    description: 'Visitors, unique IP addresses, where they are and when they visit. Data: logs-legal_hashed.otel-*.',
+    description: 'Visitors, unique IP addresses, where they are and when they visit, and what kind of certificates are made. Data: logs-legal_hashed.otel-*.',
     timeRestore: true,
     timeFrom: 'now-30d',
     timeTo: 'now',
@@ -329,8 +429,8 @@ const dashboard = {
 
 // The saved object versions of Kibana 9.0, the oldest Kibana with the Managed OTLP endpoint. Newer Kibanas upgrade
 // them on import; without them Kibana would treat the objects as 7.x ones.
-const VERSIONS = { 'index-pattern': '8.0.0', lens: '8.9.0', map: '8.4.0', dashboard: '10.2.0' };
-for (const object of [dataView, ...panels, map, dashboard]) {
+const VERSIONS = { 'index-pattern': '8.0.0', lens: '8.9.0', map: '8.4.0', search: '8.0.0', dashboard: '10.2.0' };
+for (const object of [dataView, ...panels, map, certificates, dashboard]) {
   const versioned = { ...object, coreMigrationVersion: '8.8.0', typeMigrationVersion: VERSIONS[object.type] };
   process.stdout.write(`${JSON.stringify(versioned)}\n`);
 }

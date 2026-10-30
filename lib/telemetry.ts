@@ -1,7 +1,7 @@
-// Usage statistics: small "this happened" events ("a final PDF was made, Part A only"), never what was in it:
-// no evidence, file names, hashes, names, addresses, IMEIs, serial numbers, case numbers or PDF contents.
-// They are sent as OpenTelemetry logs (OTLP/HTTP JSON) to the Legal Sakshya telemetry worker
-// (telemetry/worker/), which adds the visitor's IP address and location and forwards them to Elastic.
+// Usage statistics: small "this happened" events ("a final PDF was made, Part A only, for photos from a Samsung
+// phone"), never what was in it: no evidence, file names, hashes, names, addresses, IMEIs, serial numbers, case
+// numbers or other text from the PDF. They are sent as OpenTelemetry logs (OTLP/HTTP JSON) to the Legal Hashed
+// telemetry worker (telemetry/worker/), which adds the visitor's IP address and location and forwards them to Elastic.
 import { TELEMETRY_SERVICE_NAME, TELEMETRY_URL } from './config';
 
 export type AppEvent =
@@ -28,6 +28,25 @@ const ALLOWED_LABELS: Record<string, 'string' | 'number' | 'boolean'> = {
   serial_found: 'boolean',
   model_found: 'boolean',
   error_type: 'string',
+  // What kind of certificate a PDF is (lib/legal/certificate-summary.ts).
+  version: 'number',
+  evidence_type: 'string',
+  file_count: 'number',
+  file_kinds: 'string',
+  archive_files: 'number',
+  total_kb: 'number',
+  device_count: 'number',
+  device_types: 'string',
+  device_makers: 'string',
+  id_types: 'string',
+  control: 'string',
+  court_type: 'string',
+  case_number_given: 'boolean',
+  manner_given: 'boolean',
+  acquisition_hash: 'string',
+  observations_annexure: 'boolean',
+  observations_noted: 'number',
+  complete: 'boolean',
 };
 
 /** Keeps only allowed labels of the right type; strings are cut short so nothing long can slip through. */
@@ -35,7 +54,7 @@ export function cleanLabels(labels: Labels): Record<string, LabelValue> {
   const out: Record<string, LabelValue> = {};
   for (const [k, v] of Object.entries(labels)) {
     if (v === undefined || ALLOWED_LABELS[k] !== typeof v) continue;
-    out[k] = typeof v === 'string' ? v.slice(0, 40) : v;
+    out[k] = typeof v === 'string' ? v.slice(0, 64) : v;
   }
   return out;
 }

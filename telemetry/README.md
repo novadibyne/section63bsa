@@ -137,8 +137,14 @@ It can run before or after the first events arrive.
 | **When people visit (Indian time)** | Heatmap of visits by day of the week and hour |
 | Visitors by country · by state / region | Unique IP addresses per country and per state |
 | Visits and unique IPs per day | Daily trend |
+| **Certificates made** | One row per final certificate, newest first: parts (both, A or B), kind of evidence, kinds of file, number of files, kind of device, device maker, kind of court, Part A boxes, whether the observations annexure was attached, whether every detail was filled in, version, city and state |
+| Certificates by part · Kind of evidence · Kinds of file · Kind of device · Device maker · Kind of court · Part A: how the device is held | Final certificates counted by each of these |
+| Certificates per day | Final certificates and draft PDFs per day |
 
-Click any IP, country, city or map circle to filter the whole dashboard to it. The import also adds the data view
+Click any IP, country, city or map circle to filter the whole dashboard to it. A certificate is counted when it is
+finalised; drafts can be made many times, so they are only in *Certificates per day*. Click a row's arrow in
+*Certificates made* to see every label sent with it. Certificates finalised before this was added (30 October 2026)
+only have their parts. The import also adds the data view
 *Legal Hashed usage* (`logs-legal_hashed.otel-*` and `logs-legal_sakshya.otel-*`, where statistics went before the app was
 renamed). It works on Elastic Cloud 9.0 and later, and was tested on
 Kibana 9.0.8 and 9.5.5 with data sent through the worker. The dashboard is built by
@@ -188,6 +194,22 @@ PDFs made, draft vs final and by parts:
 FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | WHERE attributes.event.name == "pdf_generated"
 | STATS pdfs = COUNT(*) BY attributes.legal_hashed.kind, attributes.legal_hashed.parts
+```
+
+What kind of certificates are made (final PDFs):
+```esql
+FROM logs-legal_hashed.otel-*
+| WHERE attributes.event.name == "pdf_generated" AND attributes.legal_hashed.kind == "final"
+| KEEP @timestamp, attributes.legal_hashed.parts, attributes.legal_hashed.evidence_type, attributes.legal_hashed.file_kinds,
+    attributes.legal_hashed.file_count, attributes.legal_hashed.device_types, attributes.legal_hashed.device_makers,
+    attributes.legal_hashed.court_type, resource.attributes.client.geo.city_name
+| SORT @timestamp DESC
+```
+```esql
+FROM logs-legal_hashed.otel-*
+| WHERE attributes.event.name == "pdf_generated" AND attributes.legal_hashed.kind == "final"
+| STATS certificates = COUNT(*) BY attributes.legal_hashed.parts, attributes.legal_hashed.evidence_type
+| SORT certificates DESC
 ```
 
 PDFs downloaded or shared:
@@ -280,11 +302,32 @@ stream lifecycle instead of an ILM policy.
 | `page_view` | Any page is shown | `url.path` |
 | `certificate_started` | "Start" on a new certificate | `legal_hashed.parts`: both, A or B |
 | `evidence_added` | A file is added | `legal_hashed.file_kind`: image, audio, video, document, whatsapp_export, email or other |
-| `pdf_generated` | A draft or final PDF is made | `legal_hashed.kind`: draft or final, `legal_hashed.parts` |
+| `pdf_generated` | A draft or final PDF is made | `legal_hashed.kind`: draft or final, and what kind of certificate it is (below) |
 | `pdf_downloaded` | A PDF is downloaded or shared | `legal_hashed.kind`, `legal_hashed.parts`, `legal_hashed.via`: download or share |
 | `device_scan` | Phone details are filled in from a photo | `legal_hashed.imei_count`, `legal_hashed.serial_found`, `legal_hashed.model_found` (no values) |
 | `app_installed` | The app is installed from the browser | — |
 | `app_error` | A JavaScript error in the app | `legal_hashed.error_type` (e.g. TypeError; never the message) |
+
+What kind of certificate a PDF is (`lib/legal/certificate-summary.ts`). Only values from fixed lists, counts and
+yes/no; never names, addresses, file names, hashes, IMEI or serial numbers, case numbers, court names or other text
+typed into the app:
+
+| Attribute | Values |
+|---|---|
+| `legal_hashed.parts` | both, A or B |
+| `legal_hashed.version` | Version number of the certificate |
+| `legal_hashed.evidence_type` | Kind of the first file: image, audio, video, document, whatsapp_export, email or other |
+| `legal_hashed.file_kinds` | Every kind of file in the certificate, sorted and joined with +, e.g. image+whatsapp_export |
+| `legal_hashed.file_count`, `legal_hashed.archive_files`, `legal_hashed.total_kb` | Number of files, files inside archives (e.g. a WhatsApp .zip) and total size in KB |
+| `legal_hashed.device_count`, `legal_hashed.device_types` | Number of devices, and the Schedule's device boxes ticked: mobile, computer_storage_media, dvr, flash_drive, cd_dvd, server, cloud, other |
+| `legal_hashed.device_makers` | Maker found in the make & model from a fixed list (samsung, apple, xiaomi, dell, hikvision…); other if not recognised, not_given if blank. Never the model |
+| `legal_hashed.id_types` | Kinds of device ID given (imei, mac, cloud_id…), never the numbers |
+| `legal_hashed.control` | Part A boxes: owned, maintained, managed, operated (only with Part A) |
+| `legal_hashed.court_type` | Kind of court worked out in the browser from the court name: supreme_court, high_court, family_court, consumer_commission, tribunal, arbitration, sessions_court, magistrate, civil_court, district_court, commercial_court, special_court, other or not_given |
+| `legal_hashed.case_number_given`, `legal_hashed.manner_given` | Whether a case number and the manner of production were filled in |
+| `legal_hashed.acquisition_hash` | none, match or differs |
+| `legal_hashed.observations_annexure`, `legal_hashed.observations_noted` | Whether the observations annexure was attached, and how many observations were noted |
+| `legal_hashed.complete` | Whether every required detail was filled in |
 
 Every batch also carries (as resource attributes) `service.name`, `service.version`, a random visitor ID kept in the
 browser (`user.id`), `user_agent.original`, `browser.name`, `os.name`, `device.type`, `browser.language` and

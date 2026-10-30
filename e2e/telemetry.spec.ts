@@ -19,6 +19,8 @@ test('usage statistics report what happened, never the evidence', async ({ page 
   await page.getByTestId('file-input').setInputFiles(fixture);
   await expect(page.getByTestId('file-card')).toBeVisible({ timeout: 30_000 });
   await page.getByLabel(/How was this record produced/).fill('Exported via WhatsApp › Export chat by Ravi Sharma');
+  await page.getByLabel('Court / proceeding').fill('Civil Judge (Sr. Div.), Pune');
+  await page.getByLabel('Case number').fill('RCS 123/2026');
   await page.getByTestId('continue').click();
   await page.getByLabel('Make & Model').fill('Samsung Galaxy S23 (SM-S911B)');
   await page.getByLabel('IMEI value').fill('490154203237518');
@@ -48,9 +50,25 @@ test('usage statistics report what happened, never the evidence', async ({ page 
   expect(all).toContain('{"key":"legal_hashed.parts","value":{"stringValue":"B"}}');
   expect(all).toContain('{"key":"legal_hashed.kind","value":{"stringValue":"final"}}');
   expect(all).toContain('{"key":"service.name","value":{"stringValue":"legal-hashed"}}');
+  // What kind of certificate it is: kinds and counts only.
+  const finalPdf = JSON.stringify(
+    records.find((r) => JSON.stringify(r).includes('"pdf_generated"') && JSON.stringify(r).includes('{"stringValue":"final"}')),
+  );
+  for (const [key, value] of [
+    ['evidence_type', '{"stringValue":"whatsapp_export"}'],
+    ['file_kinds', '{"stringValue":"whatsapp_export"}'],
+    ['file_count', '{"intValue":"1"}'],
+    ['device_makers', '{"stringValue":"samsung"}'],
+    ['id_types', '{"stringValue":"imei"}'],
+    ['court_type', '{"stringValue":"civil_court"}'],
+    ['case_number_given', '{"boolValue":true}'],
+    ['manner_given', '{"boolValue":true}'],
+  ]) {
+    expect(finalPdf).toContain(`{"key":"legal_hashed.${key}","value":${value}}`);
+  }
 
   // None of what the user typed or added may be in it.
-  for (const secret of ['Ravi', 'Meera', 'Neha', 'Mehta', 'Baner', 'Samsung', '490154203237518', fixtureSha256, 'evidenceId=', 'WhatsApp chat', 'whatsapp-android']) {
+  for (const secret of ['Ravi', 'Meera', 'Neha', 'Mehta', 'Baner', 'Pune', 'Civil Judge', 'RCS', 'Galaxy', 'S23', 'SM-S911B', '490154203237518', fixtureSha256, 'evidenceId=', 'WhatsApp chat', 'whatsapp-android']) {
     expect(all, `must not contain ${secret}`).not.toContain(secret);
   }
 });

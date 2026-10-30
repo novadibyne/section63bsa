@@ -22,7 +22,7 @@ const PROMISES = [
     ? {
         icon: BarChart3,
         title: 'Usage statistics',
-        text: `To see how the app is used, we record visits and the kind of certificate made (for example “final PDF, Part A only”), with your IP address, approximate location, browser and device. Kept for ${STATS_RETENTION_DAYS} days. Never your evidence, files, names, IMEI numbers or certificate contents.`,
+        text: `To see how the app is used, we record visits and what kind of certificate is made (for example “final PDF, Part A only, 3 photos and a WhatsApp chat, a Samsung phone, a magistrate’s court”), with your IP address, approximate location, browser and device. Kept for ${STATS_RETENTION_DAYS} days. Never your evidence, file names, hashes, names, addresses, IMEI or serial numbers, case numbers, court names or anything else you type.`,
       }
     : { icon: Ban, title: 'No tracking', text: 'No analytics, no ads and no error-reporting services. Fonts and tools are served by this site itself.' },
   {

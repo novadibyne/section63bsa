@@ -8,6 +8,7 @@ import { istDateInput, istTimeInput, nowIso } from './time';
 import { downloadBlob, newId, safeFilename } from './utils';
 import { track } from './telemetry';
 import type { CertificateContext } from './legal/certificate-values';
+import { certificateLabels } from './legal/certificate-summary';
 import type { Certificate, CertificateParts, Device, Evidence, EvidenceFile, PartA, PartB, ProfileDefaults } from './types';
 
 export const UNTITLED = 'Untitled evidence';
@@ -380,7 +381,7 @@ export async function generateDraftPdf(certId: string): Promise<{ blob: Blob; sh
     certificateId: certId,
     details: { version: ctx.cert.version, pdfSha256: out.sha256, draft: true, observationsAnnexure: !!ctx.cert.includeObservations },
   });
-  track('pdf_generated', { kind: 'draft', parts: ctx.cert.parts ?? 'both' });
+  track('pdf_generated', { kind: 'draft', ...certificateLabels(ctx) });
   return out;
 }
 
@@ -399,7 +400,7 @@ export async function finaliseCertificate(certId: string): Promise<{ blob: Blob;
     certificateId: certId,
     details: { version: ctx.cert.version, pdfSha256: out.sha256, observationsAnnexure: !!ctx.cert.includeObservations },
   });
-  track('pdf_generated', { kind: 'final', parts: ctx.cert.parts ?? 'both' });
+  track('pdf_generated', { kind: 'final', ...certificateLabels(ctx) });
   return out;
 }
 

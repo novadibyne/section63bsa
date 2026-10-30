@@ -186,6 +186,28 @@ export function makeModelInText(text: string): string | undefined {
   return name ? `${prefix}${name}${code ? ` (${code})` : ''}` : `${prefix}${code}`;
 }
 
+/** Other makers, for makerOf: computers, CCTV recorders and storage. An empty make means the name matched. */
+const OTHER_MAKER: [RegExp, string][] = [
+  [/\b(?:MacBook|iMac|Mac\s?mini)\b/i, 'Apple'],
+  [/\bSurface\b/i, 'Microsoft'],
+  [/\b(Google|Honor|Nothing|LG|HP|Dell|Acer|Microsoft|Hikvision|CP Plus|Dahua|SanDisk|Kingston|Seagate|WD)\b/i, ''],
+];
+const SERIES_WORD = new RegExp(`\\b(${Object.keys(SERIES_MAKE).join('|')})\\b`, 'i');
+
+/** The maker named in a device's make & model, in lower case: "samsung" for "Galaxy S23 (SM-S911B)". */
+export function makerOf(makeModel: string): string | undefined {
+  const series = SERIES_WORD.exec(makeModel)?.[1];
+  let make =
+    MAKER_WORD.exec(makeModel)?.[1] ??
+    (series ? SERIES_MAKE[series.toLowerCase()] : undefined) ??
+    CODE_MAKE.find(([re]) => re.test(makeModel))?.[1];
+  for (const [re, name] of OTHER_MAKER) {
+    const m = make ? null : re.exec(makeModel);
+    if (m) make = name || m[1];
+  }
+  return make?.toLowerCase().replace(/\s+/g, '_');
+}
+
 const LINEAR_FORMATS = /code\s*-?\s*(128|39|93)|codabar|itf|datamatrix|data\s*matrix|qr/i;
 
 function add(list: FoundId[], value: string, source: FoundSource, label: string) {
