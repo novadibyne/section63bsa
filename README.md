@@ -26,9 +26,9 @@ Users add evidence files such as photos, audio, video, documents or WhatsApp cha
 
 ### Usage statistics (optional)
 
-The app reports **how it is used**: visits, unique visitors, certificates started, PDFs made and downloaded, phone scans and installs, and **what kind of certificate** each PDF is (parts, kinds of evidence and device, device maker, kind of court, counts). These go as OpenTelemetry logs to a Cloudflare Worker (`telemetry/worker/`). The worker adds each visitor's IP address and location and forwards them to Elastic's Managed OTLP Endpoint, where they're kept for 365 days and viewed in Kibana.
+The app reports **how it is used**: usage statistics such as visits, unique visitors and the kind of certificates made. These go as OpenTelemetry logs to a Cloudflare Worker (`telemetry/worker/`). The worker adds each visitor's IP address and location and forwards them to Elastic's Managed OTLP Endpoint, where they're kept for 365 days and viewed in Kibana.
 
-It never sends evidence, file names, hashes, names, addresses, IMEI or serial numbers, case numbers, court names or any other text typed into the app. The Privacy page describes the statistics whenever they are switched on.
+It never sends evidence, files or the details typed into the app. The Privacy page describes the statistics whenever they are switched on.
 
 The worker, its settings, the 365-day retention setup, the Kibana dashboard queries and how to move to another Elastic deployment are in **[`telemetry/README.md`](telemetry/README.md)**. To switch statistics off, set the GitHub variable `TELEMETRY_URL` to `off`.
 
