@@ -71,7 +71,7 @@ export const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'Is my evidence uploaded anywhere?',
-    a: 'No. Files and the details you type stay in your browser on your own device, and the app works offline. Only usage statistics are sent (pages opened, PDFs made, IP address and approximate location), never evidence or anything you type.',
+    a: 'No. Files and the details you type stay in your browser on your own device, and the app works offline. Only usage statistics are sent, never evidence or anything you type.',
   },
   {
     q: 'Is it free?',

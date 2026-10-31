@@ -22,7 +22,7 @@ const PROMISES = [
     ? {
         icon: BarChart3,
         title: 'Usage statistics',
-        text: `To see how the app is used, we collect usage statistics, such as visits and the kind of certificate made, with your IP address, approximate location, browser and device. Kept for ${STATS_RETENTION_DAYS} days. Never your evidence, files or the details you type.`,
+        text: `To see how the app is used, we collect usage statistics, such as visits and the kind of certificate made. Kept for ${STATS_RETENTION_DAYS} days. Never your evidence, files or the details you type.`,
       }
     : { icon: Ban, title: 'No tracking', text: 'No analytics, no ads and no error-reporting services. Fonts and tools are served by this site itself.' },
   {
