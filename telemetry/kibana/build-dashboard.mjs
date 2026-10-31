@@ -24,12 +24,16 @@ const label = (name) => `attributes.legal_hashed.${name}`;
 const kql = (query) => ({ query, language: 'kuery' });
 const PAGE_VIEW = kql(`${EVENT} : "page_view"`);
 const PDF = kql(`${EVENT} : "pdf_generated"`);
-// Drafts can be made many times; a certificate is counted once, when it is finalised.
 const FINAL = kql(`${EVENT} : "pdf_generated" and ${label('kind')} : "final"`);
 
 /* Lens columns */
 const uniqueIps = (label = 'Unique IP addresses') => ({
   label, customLabel: true, dataType: 'number', operationType: 'unique_count', scale: 'ratio', sourceField: IP, isBucketed: false, params: { emptyAsNull: false },
+});
+// Drafts can be made many times: a certificate counts once, by the random ID the browser gave it.
+const uniqueCertificates = (columnLabel = 'Certificates') => ({
+  label: columnLabel, customLabel: true, dataType: 'number', operationType: 'unique_count', scale: 'ratio', sourceField: label('certificate_id'), isBucketed: false,
+  params: { emptyAsNull: false },
 });
 const count = (label, filter) => ({
   label, customLabel: true, dataType: 'number', operationType: 'count', scale: 'ratio', sourceField: '___records___', isBucketed: false,
@@ -81,13 +85,13 @@ function lens(id, title, visualizationType, columns, visualization, description 
 
 const metric = (id, title, column, extra = {}) => lens(id, title, 'lnsMetric', { value: column }, { metricAccessor: 'value', ...extra });
 
-/** Horizontal bars counting final certificates by one of their labels. */
+/** Horizontal bars counting certificates (draft or final) by one of their labels. */
 const certificateBars = (id, title, name, columnLabel, description) =>
   lens(
     id,
     title,
     'lnsXY',
-    { group: terms(columnLabel, label(name), 15, { type: 'column', columnId: 'certificates' }), certificates: count('Final certificates') },
+    { group: terms(columnLabel, label(name), 15, { type: 'column', columnId: 'certificates' }), certificates: uniqueCertificates() },
     {
       preferredSeriesType: 'bar_horizontal',
       legend: { isVisible: false, position: 'right' },
@@ -96,13 +100,14 @@ const certificateBars = (id, title, name, columnLabel, description) =>
       axisTitlesVisibilitySettings: { x: false, yLeft: false, yRight: false },
     },
     description,
-    FINAL,
+    PDF,
   );
 
 /* ───────── Saved objects ───────── */
 
 // The certificate labels, with the names Kibana shows for them.
 const CERTIFICATE_FIELDS = {
+  certificate_id: 'Certificate (random ID)',
   kind: 'Draft or final',
   parts: 'Parts',
   version: 'Version',
@@ -269,33 +274,33 @@ const panels = [
     'legal-hashed-cert-per-day',
     'Certificates per day',
     'lnsXY',
-    { day: perDay(), finals: count('Final certificates', FINAL), drafts: count('Draft PDFs', kql(`${EVENT} : "pdf_generated" and ${label('kind')} : "draft"`)) },
+    { day: perDay(), certificates: uniqueCertificates(), finals: count('Finalised', FINAL) },
     {
       preferredSeriesType: 'bar',
       legend: { isVisible: true, position: 'bottom' },
       valueLabels: 'hide',
-      layers: [{ layerId: 'layer1', layerType: 'data', seriesType: 'bar', xAccessor: 'day', accessors: ['finals', 'drafts'] }],
+      layers: [{ layerId: 'layer1', layerType: 'data', seriesType: 'bar', xAccessor: 'day', accessors: ['certificates', 'finals'] }],
       axisTitlesVisibilitySettings: { x: false, yLeft: false, yRight: false },
     },
   ),
 ];
 
-// One row per final certificate, newest first.
+// One row per PDF made (draft or final), newest first.
 const certificates = {
   type: 'search',
   id: 'legal-hashed-certificates',
   attributes: {
     title: 'Certificates made',
-    description: 'Each final certificate: its parts and the kinds of evidence and device. No names, numbers or other text from the PDF.',
+    description: 'Each PDF made, draft or final: its parts and the kinds of evidence and device. No names, numbers or other text from the PDF.',
     columns: [
-      'parts', 'evidence_type', 'file_kinds', 'file_count', 'device_types', 'device_makers', 'court_type', 'control', 'observations_annexure', 'complete', 'version',
+      'kind', 'parts', 'evidence_type', 'file_kinds', 'file_count', 'device_types', 'device_makers', 'court_type', 'control', 'observations_annexure', 'complete', 'version',
     ].map(label).concat(CITY, REGION),
     sort: [['@timestamp', 'desc']],
     grid: {},
     hideChart: true,
     isTextBasedQuery: false,
     kibanaSavedObjectMeta: {
-      searchSourceJSON: JSON.stringify({ query: FINAL, filter: [], indexRefName: 'kibanaSavedObjectMeta.searchSourceJSON.index' }),
+      searchSourceJSON: JSON.stringify({ query: PDF, filter: [], indexRefName: 'kibanaSavedObjectMeta.searchSourceJSON.index' }),
     },
   },
   references: [{ name: 'kibanaSavedObjectMeta.searchSourceJSON.index', type: 'index-pattern', id: DATA_VIEW }],

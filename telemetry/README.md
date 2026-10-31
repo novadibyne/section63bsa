@@ -137,14 +137,14 @@ It can run before or after the first events arrive.
 | **When people visit (Indian time)** | Heatmap of visits by day of the week and hour |
 | Visitors by country · by state / region | Unique IP addresses per country and per state |
 | Visits and unique IPs per day | Daily trend |
-| **Certificates made** | One row per final certificate, newest first: parts (both, A or B), kind of evidence, kinds of file, number of files, kind of device, device maker, kind of court, Part A boxes, whether the observations annexure was attached, whether every detail was filled in, version, city and state |
-| Certificates by part · Kind of evidence · Kinds of file · Kind of device · Device maker · Kind of court · Part A: how the device is held | Final certificates counted by each of these |
-| Certificates per day | Final certificates and draft PDFs per day |
+| **Certificates made** | One row per PDF made (draft or final), newest first: draft or final, parts (both, A or B), kind of evidence, kinds of file, number of files, kind of device, device maker, kind of court, Part A boxes, whether the observations annexure was attached, whether every detail was filled in, version, city and state |
+| Certificates by part · Kind of evidence · Kinds of file · Kind of device · Device maker · Kind of court · Part A: how the device is held | Certificates counted by each of these, drafts included; a certificate counts once however many PDFs are made |
+| Certificates per day | Certificates worked on, and those finalised, per day |
 
-Click any IP, country, city or map circle to filter the whole dashboard to it. A certificate is counted when it is
-finalised; drafts can be made many times, so they are only in *Certificates per day*. Click a row's arrow in
-*Certificates made* to see every label sent with it. Certificates finalised before this was added (30 October 2026)
-only have their parts. The import also adds the data view
+Click any IP, country, city or map circle to filter the whole dashboard to it. Each certificate counts once, by the
+random ID the browser gave it, whether it has only drafts or has been finalised. Click a row's arrow in
+*Certificates made* to see every label sent with it. The details are only sent with PDFs made after
+30 October 2026: earlier rows only have *Draft or final* and *Parts*, and the charts leave them out. The import also adds the data view
 *Legal Hashed usage* (`logs-legal_hashed.otel-*` and `logs-legal_sakshya.otel-*`, where statistics went before the app was
 renamed). It works on Elastic Cloud 9.0 and later, and was tested on
 Kibana 9.0.8 and 9.5.5 with data sent through the worker. The dashboard is built by
@@ -196,19 +196,19 @@ FROM logs-legal_hashed.otel-*, logs-legal_sakshya.otel-*
 | STATS pdfs = COUNT(*) BY attributes.legal_hashed.kind, attributes.legal_hashed.parts
 ```
 
-What kind of certificates are made (final PDFs):
+What kind of certificates are made (every PDF, draft or final):
 ```esql
 FROM logs-legal_hashed.otel-*
-| WHERE attributes.event.name == "pdf_generated" AND attributes.legal_hashed.kind == "final"
-| KEEP @timestamp, attributes.legal_hashed.parts, attributes.legal_hashed.evidence_type, attributes.legal_hashed.file_kinds,
+| WHERE attributes.event.name == "pdf_generated"
+| KEEP @timestamp, attributes.legal_hashed.kind, attributes.legal_hashed.parts, attributes.legal_hashed.evidence_type, attributes.legal_hashed.file_kinds,
     attributes.legal_hashed.file_count, attributes.legal_hashed.device_types, attributes.legal_hashed.device_makers,
     attributes.legal_hashed.court_type, resource.attributes.client.geo.city_name
 | SORT @timestamp DESC
 ```
 ```esql
 FROM logs-legal_hashed.otel-*
-| WHERE attributes.event.name == "pdf_generated" AND attributes.legal_hashed.kind == "final"
-| STATS certificates = COUNT(*) BY attributes.legal_hashed.parts, attributes.legal_hashed.evidence_type
+| WHERE attributes.event.name == "pdf_generated" AND attributes.legal_hashed.certificate_id IS NOT NULL
+| STATS certificates = COUNT_DISTINCT(attributes.legal_hashed.certificate_id) BY attributes.legal_hashed.parts, attributes.legal_hashed.evidence_type
 | SORT certificates DESC
 ```
 
@@ -314,6 +314,7 @@ typed into the app:
 
 | Attribute | Values |
 |---|---|
+| `legal_hashed.certificate_id` | A random ID the browser gave the certificate, so its drafts and final PDF count as one |
 | `legal_hashed.parts` | both, A or B |
 | `legal_hashed.version` | Version number of the certificate |
 | `legal_hashed.evidence_type` | Kind of the first file: image, audio, video, document, whatsapp_export, email or other |

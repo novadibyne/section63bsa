@@ -40,14 +40,18 @@ describe('Kibana dashboard', () => {
     expect(byId('legal-hashed-heatmap').attributes.visualizationType).toBe('lnsHeatmap');
   });
 
-  it('lists the final certificates and what kind they are', () => {
+  it('lists the certificates made, drafts included, and counts each certificate once', () => {
     const byId = (id: string) => objects.find((o) => o.id === id)!;
     const list = byId('legal-hashed-certificates');
     expect(list.type).toBe('search');
-    expect(JSON.parse(list.attributes.kibanaSavedObjectMeta.searchSourceJSON).query.query).toContain('attributes.legal_hashed.kind : "final"');
-    expect(list.attributes.columns).toEqual(expect.arrayContaining(['attributes.legal_hashed.parts', 'attributes.legal_hashed.evidence_type', 'attributes.legal_hashed.device_types']));
+    expect(JSON.parse(list.attributes.kibanaSavedObjectMeta.searchSourceJSON).query.query).toBe('attributes.event.name : "pdf_generated"');
+    expect(list.attributes.columns).toEqual(
+      expect.arrayContaining(['attributes.legal_hashed.kind', 'attributes.legal_hashed.parts', 'attributes.legal_hashed.evidence_type', 'attributes.legal_hashed.device_types']),
+    );
     const parts = byId('legal-hashed-cert-parts').attributes.state;
-    expect(parts.query.query).toContain('"final"');
-    expect(parts.datasourceStates.formBased.layers.layer1.columns.group).toMatchObject({ operationType: 'terms', sourceField: 'attributes.legal_hashed.parts' });
+    expect(parts.query.query).toBe('attributes.event.name : "pdf_generated"');
+    const columns = parts.datasourceStates.formBased.layers.layer1.columns;
+    expect(columns.group).toMatchObject({ operationType: 'terms', sourceField: 'attributes.legal_hashed.parts' });
+    expect(columns.certificates).toMatchObject({ operationType: 'unique_count', sourceField: 'attributes.legal_hashed.certificate_id' });
   });
 });

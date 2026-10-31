@@ -34,6 +34,7 @@ const files = [
 describe('what kind of certificate a PDF is', () => {
   it('describes the certificate with kinds and counts', () => {
     expect(certificateLabels({ evidence, files, devices: [device], cert })).toEqual({
+      certificate_id: 'c',
       parts: 'both',
       version: 2,
       evidence_type: 'whatsapp_export',

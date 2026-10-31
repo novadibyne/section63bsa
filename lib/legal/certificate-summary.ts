@@ -37,6 +37,8 @@ export function certificateLabels(ctx: CertificateContext): Labels {
   const { evidence, files, devices, cert } = ctx;
   const acquisition = files.filter((f) => f.acquisitionHash);
   return {
+    // The random ID the browser gave the certificate, so its drafts and final PDF count as one certificate.
+    certificate_id: cert.id,
     parts: partsOf(cert),
     version: cert.version,
     evidence_type: evidence.evidenceType,

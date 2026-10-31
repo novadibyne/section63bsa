@@ -29,6 +29,7 @@ const ALLOWED_LABELS: Record<string, 'string' | 'number' | 'boolean'> = {
   model_found: 'boolean',
   error_type: 'string',
   // What kind of certificate a PDF is (lib/legal/certificate-summary.ts).
+  certificate_id: 'string',
   version: 'number',
   evidence_type: 'string',
   file_count: 'number',
